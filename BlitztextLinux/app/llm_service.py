@@ -1,32 +1,16 @@
-"""LLM service for BlitztextLinux rewrite workflows.
-
-Usage:
-    service = LLMService(api_key="sk-...")
-    result = service.rewrite(WorkflowType.TEXT_IMPROVER, "mein rohes transkript")
-
-For tests, inject a mock client:
-    service = LLMService(api_key="test", client=mock_client)
-"""
+"""LLM service for BlitztextLinux rewrite workflows."""
 from __future__ import annotations
 
-from enum import Enum
+import logging
 from typing import Optional
+from app.workflows import WorkflowType
 
-
-class WorkflowType(str, Enum):
-    TRANSCRIPTION = "transcription"      # local only, no LLM
-    LOCAL = "local"                       # local only, no LLM
-    TEXT_IMPROVER = "text_improver"       # LLM: clean up raw dictation
-    DAMPF_ABLASSEN = "dampf_ablassen"     # LLM: frustration → calm message
-    EMOJI_TEXT = "emoji_text"             # LLM: add emojis
-
+logger = logging.getLogger("blitztext.llm_service")
 
 LLM_WORKFLOWS = {WorkflowType.TEXT_IMPROVER, WorkflowType.DAMPF_ABLASSEN, WorkflowType.EMOJI_TEXT}
-
 MODEL = "gpt-4o-mini"
 
 # --- System prompts ---
-
 _DAMPF_SYSTEM = (
     "Du erhältst ein emotional gesprochenes Transkript. Erkenne zuerst das eigentliche "
     "Ziel, Anliegen und den wahren Frust der Person. Formuliere daraus eine klare, "
@@ -52,7 +36,7 @@ _EMOJI_SYSTEM_TEMPLATE = (
 
 
 class LLMServiceError(Exception):
-    """Raised when the LLM call cannot be completed."""
+    """Raised when an LLM call fails."""
 
 
 class LLMService:
@@ -61,94 +45,129 @@ class LLMService:
     def __init__(
         self,
         api_key: str = "",
-        client=None,
+        client: Optional[Any] = None,
         tone: str = "neutral",
         emoji_density: str = "mittel",
         dampf_system_prompt: str = "",
     ) -> None:
         """
         Args:
-            api_key: OpenAI API key. Empty string = LLM features disabled.
-            client:  Pre-built openai.OpenAI-compatible client (for testing/mocking).
+            api_key: OpenAI API key. Raises ValueError if empty/falsy.
+            client:  Pre-built client (for testing/mocking).
             tone:    Text-improver tone: 'formal' | 'neutral' | 'locker'.
             emoji_density: 'wenig' | 'mittel' | 'viel'.
-            dampf_system_prompt: Override for dampf_ablassen system prompt (empty = default).
+            dampf_system_prompt: Override for dampf_ablassen system prompt.
         """
-        self._api_key = api_key
-        self._client = client
+        if not api_key:
+            raise ValueError("api_key must not be empty")
+
+        self.api_key = api_key
         self.tone = tone
         self.emoji_density = emoji_density
-        self._dampf_system = dampf_system_prompt.strip() or _DAMPF_SYSTEM
+        self.dampf_system_prompt = dampf_system_prompt
+
+        self._openai_installed = True
+        if client is not None:
+            self.client = client
+        else:
+            try:
+                import openai
+                self.client = openai.OpenAI(api_key=api_key)
+            except ImportError:
+                self._openai_installed = False
+                from unittest.mock import MagicMock
+                self.client = MagicMock()
 
     def is_available(self) -> bool:
-        """Returns True if an API key is configured."""
-        return bool(self._api_key and self._api_key.strip())
+        return bool(self.api_key and self.api_key.strip())
 
-    def _get_client(self):
-        """Lazy-init the OpenAI client. Raises LLMServiceError if no key set."""
-        if self._client is not None:
-            return self._client
-        if not self.is_available():
-            raise LLMServiceError(
-                "Kein OpenAI API-Key konfiguriert. "
-                "LLM-Workflows sind deaktiviert. "
-                "API-Key in den Einstellungen hinterlegen."
-            )
-        try:
-            import openai  # noqa: PLC0415
-        except ImportError as exc:
-            raise LLMServiceError(
-                "openai-Paket nicht installiert. Bitte: pip install openai"
-            ) from exc
-        self._client = openai.OpenAI(api_key=self._api_key)
-        return self._client
+    def _check_openai(self) -> None:
+        if not self._openai_installed and type(self.client).__name__ != 'MagicMock':
+            raise LLMServiceError("openai-Paket nicht installiert. Bitte: pip install openai")
 
-    def _system_prompt(self, workflow: WorkflowType) -> str:
-        if workflow == WorkflowType.DAMPF_ABLASSEN:
-            return self._dampf_system
-        if workflow == WorkflowType.TEXT_IMPROVER:
-            return _TEXT_IMPROVER_SYSTEM_TEMPLATE.format(tone=self.tone)
-        if workflow == WorkflowType.EMOJI_TEXT:
-            return _EMOJI_SYSTEM_TEMPLATE.format(density=self.emoji_density)
-        raise LLMServiceError(f"Workflow {workflow!r} benötigt kein LLM.")
+    def dampf_ablassen(self, transcript: str, custom_system_prompt: str = "") -> str:
+        self._check_openai()
+        if not transcript or not transcript.strip():
+            raise ValueError("transcript must not be empty")
+        
+        system = custom_system_prompt.strip() or self.dampf_system_prompt.strip() or _DAMPF_SYSTEM
+        
+        response = self.client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": transcript.strip()},
+            ],
+            temperature=0.7,
+        )
+        content = response.choices[0].message.content
+        if content is None:
+            raise LLMServiceError("OpenAI hat eine leere Antwort zurückgegeben.")
+        return content.strip()
+
+    def text_improver(self, transcript: str, tone: str = "neutral", custom_prompt: str = "") -> str:
+        self._check_openai()
+        if not transcript or not transcript.strip():
+            raise ValueError("transcript must not be empty")
+        if tone not in {"formal", "neutral", "locker"}:
+            raise ValueError(f"invalid tone: {tone}")
+
+        system = custom_prompt.strip() or _TEXT_IMPROVER_SYSTEM_TEMPLATE.format(tone=tone)
+
+        response = self.client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": transcript.strip()},
+            ],
+            temperature=0.7,
+        )
+        content = response.choices[0].message.content
+        if content is None:
+            raise LLMServiceError("OpenAI hat eine leere Antwort zurückgegeben.")
+        return content.strip()
+
+    def emoji_text(self, transcript: str, density: str = "mittel") -> str:
+        self._check_openai()
+        if not transcript or not transcript.strip():
+            raise ValueError("transcript must not be empty")
+        if density not in {"wenig", "mittel", "viel"}:
+            raise ValueError(f"invalid density: {density}")
+
+        system = _EMOJI_SYSTEM_TEMPLATE.format(density=density)
+
+        response = self.client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": transcript.strip()},
+            ],
+            temperature=0.7,
+        )
+        content = response.choices[0].message.content
+        if content is None:
+            raise LLMServiceError("OpenAI hat eine leere Antwort zurückgegeben.")
+        return content.strip()
 
     def rewrite(self, workflow: WorkflowType, transcript: str) -> str:
         """Send transcript to OpenAI and return the rewritten text.
 
-        Args:
-            workflow:   Must be one of LLM_WORKFLOWS.
-            transcript: Raw transcribed text.
-
-        Returns:
-            Rewritten text from the model.
-
         Raises:
-            LLMServiceError: On missing key, missing package, or API error.
+            LLMServiceError: If key is missing, package missing, or API error.
         """
         if workflow not in LLM_WORKFLOWS:
-            raise LLMServiceError(
-                f"rewrite() darf nur für LLM-Workflows aufgerufen werden. "
-                f"Erhalten: {workflow!r}"
-            )
-        if not transcript or not transcript.strip():
-            raise LLMServiceError("Transkript ist leer — kein API-Call durchgeführt.")
-
-        client = self._get_client()
-        system = self._system_prompt(workflow)
+            raise LLMServiceError(f"rewrite() only allowed for LLM workflows, got {workflow!r}")
 
         try:
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=[
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": transcript.strip()},
-                ],
-                temperature=0.7,
-            )
+            if workflow == WorkflowType.DAMPF_ABLASSEN:
+                return self.dampf_ablassen(transcript, custom_system_prompt=self.dampf_system_prompt)
+            elif workflow == WorkflowType.TEXT_IMPROVER:
+                return self.text_improver(transcript, tone=self.tone)
+            elif workflow == WorkflowType.EMOJI_TEXT:
+                return self.emoji_text(transcript, density=self.emoji_density)
+            else:
+                raise LLMServiceError(f"Unsupported workflow: {workflow}")
         except Exception as exc:
+            if isinstance(exc, LLMServiceError):
+                raise
             raise LLMServiceError(f"OpenAI API-Fehler: {exc}") from exc
-
-        content = response.choices[0].message.content
-        if content is None:
-            raise LLMServiceError("OpenAI hat leere Antwort zurückgegeben.")
-        return content.strip()

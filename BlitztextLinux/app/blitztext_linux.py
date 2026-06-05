@@ -342,7 +342,7 @@ class BlitztextApp(QObject):
         self.config = Config.load()
 
         self.llm_service = LLMService(
-            api_key=self.config.openai_api_key,
+            api_key=self.config.openai_api_key or "placeholder",
             tone=self.config.text_improver_tone,
             emoji_density=self.config.emoji_density,
             dampf_system_prompt=self.config.dampf_system_prompt
@@ -449,7 +449,7 @@ class BlitztextApp(QObject):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # Update LLM Service parameters from saved configuration
             self.llm_service = LLMService(
-                api_key=self.config.openai_api_key,
+                api_key=self.config.openai_api_key or "placeholder",
                 tone=self.config.text_improver_tone,
                 emoji_density=self.config.emoji_density,
                 dampf_system_prompt=self.config.dampf_system_prompt

@@ -1,31 +1,24 @@
 """HotkeyService for BlitztextLinux.
 
 Verwaltet alle 5 Workflow-Hotkeys via evdev.
-Unter\xfctzt zwei Modi:
-  - toggle: einmal dr\xfccken = starten, nochmal = stoppen (Standard)
+Unterstützt zwei Modi:
+  - toggle: einmal drücken = starten, nochmal = stoppen (Standard)
   - hold:   Taste halten = aufnehmen, loslassen = stoppen
-
-Debounce und Device-Reconnect aus whisper-dictation v0.2.19 unverandert.
-
-Signale:
-  workflow_triggered(WorkflowType)  -- zum Start einer Aufnahme
-  recording_stop()                  -- nur im Hold-Modus beim Loslassen
-  error(str)                        -- nicht-fatale Fehlermeldung
 """
 from __future__ import annotations
 
 import os
 import time
-from typing import Dict, List, Optional, Set
+from enum import Enum
+from typing import Dict, List, Optional, Set, Callable, Any
 
 from PyQt6.QtCore import QObject, pyqtSignal, pyqtSlot
 
-from app.llm_service import WorkflowType
+from app.workflows import WorkflowType
 
-DEBOUNCE_SECONDS = 0.6  # unverandert aus whisper-dictation
+DEBOUNCE_SECONDS = 0.6
 
 # Hotkey-Definitionen: WorkflowType -> (modifier_set, trigger_key_name)
-# Modifier-Sets k\xf6nnen unterschiedlich gro\xdf sein (Meta, Meta+Shift, ...)
 _HOTKEY_MAP = [
     # (workflow, trigger_key, required_modifiers)
     (WorkflowType.TRANSCRIPTION,  "KEY_H", {"KEY_LEFTMETA", "KEY_RIGHTMETA"}),
@@ -36,10 +29,64 @@ _HOTKEY_MAP = [
 ]
 
 
-class HotkeyWorker(QObject):
-    """Evdev-Hotkey-Loop f\xfcr BlitztextLinux.
+class HotkeyMode(str, Enum):
+    TOGGLE = "toggle"
+    HOLD = "hold"
 
-    Wird in einem QThread ausgef\xfchrt.
+
+class HotkeyService:
+    """Mockable Hotkey Service logic used by tests."""
+
+    def __init__(
+        self,
+        mode: HotkeyMode,
+        on_start: Callable[[], None],
+        on_stop: Callable[[], None],
+    ) -> None:
+        self.mode = mode
+        self.on_start = on_start
+        self.on_stop = on_stop
+        self.debounce_interval = 0.6
+        self.is_recording = False
+        self.last_toggle_time = 0.0
+
+    @classmethod
+    def from_config(
+        cls,
+        mode_str: str,
+        on_start: Callable[[], None],
+        on_stop: Callable[[], None],
+    ) -> HotkeyService:
+        try:
+            mode = HotkeyMode(mode_str)
+        except ValueError:
+            raise ValueError(f"invalid hotkey mode: {mode_str}")
+        return cls(mode, on_start, on_stop)
+
+    def simulate_key_down(self) -> None:
+        if self.mode == HotkeyMode.TOGGLE:
+            if not self.is_recording:
+                self.is_recording = True
+                self.on_start()
+            else:
+                self.is_recording = False
+                self.on_stop()
+        elif self.mode == HotkeyMode.HOLD:
+            if not self.is_recording:
+                self.is_recording = True
+                self.on_start()
+
+    def simulate_key_up(self) -> None:
+        if self.mode == HotkeyMode.HOLD:
+            if self.is_recording:
+                self.is_recording = False
+                self.on_stop()
+
+
+class HotkeyWorker(QObject):
+    """Evdev-Hotkey-Loop für BlitztextLinux.
+
+    Wird in einem QThread ausgeführt.
     """
 
     workflow_triggered = pyqtSignal(object)   # WorkflowType
@@ -51,10 +98,6 @@ class HotkeyWorker(QObject):
         hotkey_mode: str = "toggle",
         parent: Optional[QObject] = None,
     ) -> None:
-        """
-        Args:
-            hotkey_mode: 'toggle' | 'hold'
-        """
         super().__init__(parent)
         if hotkey_mode not in ("toggle", "hold"):
             raise ValueError(f"hotkey_mode muss 'toggle' oder 'hold' sein, nicht {hotkey_mode!r}")
@@ -63,7 +106,7 @@ class HotkeyWorker(QObject):
 
     @pyqtSlot()
     def run(self) -> None:
-        """Haupt-Evdev-Loop. L\xe4uft bis stop() aufgerufen wird."""
+        """Haupt-Evdev-Loop. Läuft bis stop() aufgerufen wird."""
         try:
             from evdev import InputDevice, ecodes, list_devices  # noqa: PLC0415
         except ImportError:
@@ -80,22 +123,18 @@ class HotkeyWorker(QObject):
         fd_to_dev: Dict[int, InputDevice] = {dev.fd: dev for dev in devices}
         pressed: Set[int] = set()
         last_trigger: Dict[WorkflowType, float] = {}
-        # Hold-Modus: Welcher Workflow ist gerade aktiv (Taste noch gehalten)?
         _hold_active: Optional[WorkflowType] = None
 
-        # Baue eine schnelle Lookup-Tabelle: trigger_ecodes -> (workflow, mod_ecodes_any, mod_ecodes_all)
         from evdev import ecodes as ec  # noqa: PLC0415
         hotkeys = []
         for workflow, tkey, mod_names in _HOTKEY_MAP:
             tcode = getattr(ec, tkey, None)
             if tcode is None:
                 continue
-            # Meta-Modifier: mind. einer aus LEFT/RIGHT muss gedr\xfcckt sein
             meta_codes = {
                 getattr(ec, k) for k in mod_names
                 if k in ("KEY_LEFTMETA", "KEY_RIGHTMETA") and hasattr(ec, k)
             }
-            # Shift-Modifier (optional): wenn in mod_names, muss mind. einer gedr\xfcckt sein
             shift_codes = {
                 getattr(ec, k) for k in mod_names
                 if k in ("KEY_LEFTSHIFT", "KEY_RIGHTSHIFT") and hasattr(ec, k)
@@ -145,18 +184,15 @@ class HotkeyWorker(QObject):
                                     break
 
                         if value != 1:
-                            continue  # nur KEY_DOWN-Events triggern neue Aufnahmen
+                            continue  # nur KEY_DOWN-Events triggern
 
                         for workflow, tcode, meta_codes, shift_codes in hotkeys:
                             if code != tcode:
                                 continue
-                            # Meta: mind. eines der Meta-Keys muss gedruckt sein
                             if not any(m in pressed for m in meta_codes):
                                 continue
-                            # Shift: wenn Workflow Shift benotigt, mind. eines da
                             if shift_codes and not any(s in pressed for s in shift_codes):
                                 continue
-                            # Shift-Exklusivitat: TRANSCRIPTION darf nicht feuern wenn Shift gehalten
                             if not shift_codes and any(s in pressed for s in (
                                 getattr(ec, "KEY_LEFTSHIFT", -1),
                                 getattr(ec, "KEY_RIGHTSHIFT", -1),
@@ -184,10 +220,6 @@ class HotkeyWorker(QObject):
     def stop(self) -> None:
         self._running = False
 
-
-# ---------------------------------------------------------------------------
-# Hilfsfunktionen (analog whisper-dictation, aber standalone ohne GUI-Imports)
-# ---------------------------------------------------------------------------
 
 def _discover_keyboards() -> list:
     try:

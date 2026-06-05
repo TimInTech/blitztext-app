@@ -73,6 +73,15 @@ class AudioRecorder:
         """True, wenn ein parec-Prozess aktiv laeuft (PID-File existiert und Prozess lebt)."""
         return self._live_pid() is not None
 
+    def start_recording(self, device: str = "@DEFAULT_SOURCE@") -> Path:
+        return self.start(device)
+
+    def stop_recording(self) -> Optional[Path]:
+        return self.stop()
+
+    def discard_recording(self) -> None:
+        self.discard()
+
     def start(self, device: str = "@DEFAULT_SOURCE@") -> Path:
         """Startet eine neue Aufnahme.
 
