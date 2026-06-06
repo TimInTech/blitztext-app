@@ -175,6 +175,61 @@ pytest
 
 ---
 
+## Autostart einrichten
+
+Blitztext Linux kann als systemd-User-Service eingerichtet werden, damit es nach dem Login automatisch im System-Tray erscheint.
+
+### 1. Installations-Skript ausführen
+
+Das Skript prüft alle Abhängigkeiten, richtet die virtuelle Umgebung ein und installiert den systemd-Service — es startet die Anwendung aber **nicht** automatisch:
+
+```bash
+cd BlitztextLinux
+bash scripts/install.sh
+```
+
+### 2. Re-Login durchführen
+
+Falls der Benutzer noch nicht Mitglied der Gruppe `input` war, informiert das Skript über einen nötigen Re-Login. **Melden Sie sich ab und wieder an** (oder starten Sie das System neu), damit evdev-Hotkeys funktionieren.
+
+### 3. Manuellen Test durchführen
+
+Starten Sie die Anwendung einmalig manuell, um sicherzugehen, dass alles funktioniert:
+
+```bash
+cd BlitztextLinux
+.venv/bin/python app/blitztext_linux.py
+```
+
+Erscheint das Mikrofon-Symbol im Tray und reagieren die Hotkeys korrekt, ist die Installation erfolgreich.
+
+### 4. Autostart aktivieren
+
+Wenn der manuelle Test erfolgreich war, starten Sie den Service:
+
+```bash
+systemctl --user start blitztext-linux
+```
+
+Ab sofort startet Blitztext Linux automatisch mit jeder grafischen Sitzung.
+
+### Diagnose
+
+Bei Problemen liefert das Verify-Skript eine Übersicht aller Abhängigkeiten:
+
+```bash
+bash scripts/verify.sh
+```
+
+### Autostart deaktivieren
+
+```bash
+systemctl --user stop blitztext-linux
+systemctl --user disable blitztext-linux
+```
+
+---
+
 ## Bekannte Grenzen
 
 *   **Linux only**: Läuft ausschließlich auf Linux-Systemen.
