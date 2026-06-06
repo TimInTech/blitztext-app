@@ -1,157 +1,102 @@
-# Blitztext App
+# Blitztext
 
-Blitztext App is an experimental open-source macOS menubar app for turning speech into text.
+**Sprache zu Text per Hotkey** — aufnehmen, transkribieren, optional per LLM umschreiben und direkt in die aktive Anwendung einfügen.
 
-It is intentionally small and unfinished. The goal is to make a real workflow visible and hackable: press a hotkey, speak, get text back, optionally rewrite it, and paste it into the app you were using.
+Dieses Repository enthält zwei eigenständige Implementierungen:
 
-This is a learning and experimentation project, not a polished product.
+- 🐧 **[Blitztext Linux](BlitztextLinux/README.md)** — Python 3 / PyQt6, für Kubuntu/Ubuntu unter KDE Plasma mit Wayland. **Im Fokus dieses Forks.**
+- 🍎 **[Blitztext macOS](BlitztextMac/README.md)** — das ursprüngliche Swift/SwiftUI-Menubar-Projekt von [cmagnussen](https://github.com/cmagnussen/blitztext-app), unverändert übernommen.
 
-> Preview status: bring your own OpenAI API key, no hosted backend, no warranty, no support guarantee.
+> [!NOTE]
+> Dies ist ein Lern- und Experimentier-Projekt: eigenen OpenAI API-Key mitbringen, kein gehostetes Backend, keine Gewährleistung. Die macOS-Version bleibt von der Linux-Portierung vollkommen unberührt.
 
-## What It Does
+---
 
-- **Blitztext**: record speech and transcribe it.
-- **Blitztext+**: record speech, transcribe it, then turn the rough draft into cleaner writing.
-- **Blitztext $%&!**: turn frustrated speech into a calmer message.
-- **Blitztext :)**: add fitting emojis to dictated text.
-
-## Important Preview Notes
-
-- macOS only.
-- Bring your own OpenAI API key.
-- No hosted Blitztext backend is included or provided.
-- In online mode, audio and text are sent directly from the app to the OpenAI API.
-- Optional local transcription via WhisperKit/CoreML if you install a compatible model locally.
-- `./build.sh` creates a locally ad-hoc-signed development app. No notarized release binary is provided.
-- Not production ready.
-- No warranty and no support guarantee.
-
-You are welcome to use, fork, adapt, and share this project under the license terms.
-
-The intent is not to ship a one-click finished app. The intent is to make a real AI workflow understandable: clone it, build it, read the code, change it, break it, fix it, and suggest improvements. If you only want to download something and never look inside, this preview will probably feel rough. If you want to learn how a small native macOS AI app is put together, you are in the right place.
-
-## Screenshots
+## Screenshots (Linux)
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/online-mode.png" alt="Blitztext online transcription mode" width="420"></td>
-    <td><img src="docs/screenshots/local-mode.png" alt="Blitztext secure local transcription mode" width="420"></td>
+    <td align="center">
+      <img src="docs/screenshots/linux/main-window.png" alt="Hauptfenster mit Start/Stopp, Workflow-Auswahl und Schnellzugriffen" width="360"><br>
+      <sub><b>Hauptfenster</b> — grafischer Fallback zum Hotkey</sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/linux/settings-whisper.png" alt="Einstellungen: Spracherkennung mit Whisper-Modell, Backend, Hotkey-Modus" width="360"><br>
+      <sub><b>Einstellungen → Spracherkennung</b></sub>
+    </td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/local-model-picker.png" alt="Blitztext local model picker" width="420"></td>
-    <td><img src="docs/screenshots/settings-customize.png" alt="Blitztext settings and customization view" width="420"></td>
+    <td align="center">
+      <img src="docs/screenshots/linux/settings-ki-workflows.png" alt="Einstellungen: KI-Workflows mit OpenAI API-Key, Tonfall und Emoji-Dichte" width="360"><br>
+      <sub><b>Einstellungen → KI-Workflows</b></sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/linux/settings-allgemein.png" alt="Einstellungen: Allgemein mit Auto-Paste, Diktat-Notizordner und Verlaufsgröße" width="360"><br>
+      <sub><b>Einstellungen → Allgemein</b></sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/linux/history.png" alt="Verlaufs-Fenster mit Transkripten und Diktat-Einträgen" width="360"><br>
+      <sub><b>Verlauf</b> — Transkripte & Diktat-Einträge</sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/linux/tts.png" alt="Vorlesen-Fenster mit Stimmen- und Tempo-Auswahl (Piper TTS)" width="360"><br>
+      <sub><b>Vorlesen</b> — Text-to-Speech via Piper</sub>
+    </td>
   </tr>
 </table>
 
-## Requirements
+---
 
-- macOS 14 or newer
-- Xcode 16 or newer (Swift 5.10), with Command Line Tools installed and selected for `xcodebuild`
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) to generate the Xcode project
-- For online transcription and rewriting: an OpenAI API key with access to:
-  - `whisper-1` for transcription
-  - `gpt-4o-mini` and optionally `gpt-4o` for rewriting
-- For local-only transcription: a WhisperKit CoreML model in:
-  `~/Library/Application Support/Blitztext/models/whisperkit/`
+## Die 5 Workflows
 
-The build also pulls one Swift Package dependency automatically:
+| Workflow | Hotkey | LLM | Beschreibung |
+| :--- | :--- | :---: | :--- |
+| 🎙 **Blitztext** | `Meta+H` | – | Sprache aufnehmen, transkribieren, direkt einfügen. |
+| 🔒 **Blitztext Lokal** | `Meta+Shift+H` | – | Rein lokale Transkription, ohne Internet. |
+| ✨ **Blitztext+** | `Meta+Shift+T` | ✓ | Transkript per GPT-4o-mini sauber umformulieren. |
+| 🔥 **Blitztext $%&!** | `Meta+Shift+D` | ✓ | Emotionale Sprache in eine sachliche Nachricht wandeln. |
+| 😊 **Blitztext :)** | `Meta+Shift+E` | ✓ | Passende Emojis ergänzen (Dichte einstellbar). |
 
-- [`argmax-oss-swift`](https://github.com/argmaxinc/argmax-oss-swift) (WhisperKit) — used for local on-device transcription.
+Dazu Komfort-Funktionen: **Diktat-Modus** (Markdown-Notizen), **Verlauf** (Kopieren/Löschen/Zusammenführen), **Vorlesen** (Piper TTS) und Desktop-**Benachrichtigungen**.
 
-Install XcodeGen if needed:
+---
 
-```bash
-brew install xcodegen
-```
-
-## Build And Run
+## Schnellstart (Linux)
 
 ```bash
-git clone https://github.com/cmagnussen/blitztext-app.git
-cd blitztext-app
-./build.sh --run
+# Systempakete
+sudo apt install pulseaudio-utils wl-clipboard ydotool ffmpeg python3-venv python3-evdev socat
+
+# Lokale Whisper-Engine
+pipx install openai-whisper
+
+# Projekt aufsetzen
+cd BlitztextLinux
+python3 -m venv .venv
+.venv/bin/pip install PyQt6 evdev openai pytest
+
+# evdev-Rechte (danach ab- und wieder anmelden)
+sudo usermod -aG input $USER
+
+# Starten
+./run.sh
 ```
 
-For a local install into `/Applications`:
+Die **vollständige Anleitung** — Voraussetzungen, ydotool-Setup, Konfiguration, systemd-Autostart, Tests, Sicherheits- und Datenschutz-Hinweise — steht in **[BlitztextLinux/README.md](BlitztextLinux/README.md)**.
 
-```bash
-./build.sh --install --run
-```
+---
 
-The generated `.app` is ad-hoc signed for local development only. Do not treat it as a trusted redistributable binary. A public binary release would need Developer ID signing and notarization.
+## macOS-Version
 
-On first launch, either paste your own OpenAI API key for online workflows or install a WhisperKit CoreML model for local transcription. Rewriting workflows still require OpenAI.
+Der ursprüngliche macOS-Menubar-Client liegt unverändert unter **[BlitztextMac/](BlitztextMac/README.md)** und stammt aus dem Upstream-Projekt von [cmagnussen/blitztext-app](https://github.com/cmagnussen/blitztext-app). Build und Nutzung sind dort dokumentiert.
 
-For fully local transcription, install a WhisperKit CoreML model and enable **Sicherer Lokaler Modus** in the app.
+---
 
-For a slower, more explicit walkthrough, see [docs/setup.md](docs/setup.md).
+## Lizenz
 
-## Permissions
+Code unter der MIT-Lizenz — siehe [LICENSE](LICENSE). Projektnamen, Logos und App-Icons sind davon nicht automatisch als Marken-/Brand-Assets erfasst — siehe [TRADEMARKS.md](TRADEMARKS.md).
 
-Blitztext asks for:
-
-- **Microphone**: to record your voice.
-- **Accessibility**: to paste the result back into the app you were using.
-
-If you do not grant Accessibility permission, you can still copy results manually.
-
-Full Disk Access is not required. If auto-paste does not work even though transcription succeeds, open **System Settings -> Privacy & Security -> Accessibility**, enable Blitztext there, restart Blitztext, and try again with the cursor focused in a text field. If macOS shows multiple Blitztext entries, remove or disable the old ones and grant the permission to the app you just built or installed.
-
-## Data Flow
-
-The preview has no custom backend.
-
-```text
-Online transcription: Your Mac -> OpenAI Audio Transcriptions API
-Text rewriting:       Your Mac -> OpenAI Chat Completions API
-Local transcription:  Your Mac -> WhisperKit/CoreML on device
-```
-
-The app stores your OpenAI API key in the user's macOS Keychain.
-
-Read [docs/privacy.md](docs/privacy.md) before using the preview with sensitive content.
-
-## Project Structure
-
-```text
-BlitztextMac/
-  App/          App lifecycle and paste handling
-  Features/     Workflows, menu bar UI, settings
-  Services/     Recording, OpenAI calls, hotkeys, local storage
-  Views/        Shared SwiftUI views
-build.sh        Local build script
-docs/           Setup, privacy, roadmap, preflight, landing page notes
-```
-
-## Local Models
-
-Local transcription is available as an experimental WhisperKit/CoreML path. The app does not bundle a model; choose one in the app, click install, and then switch on **Sicherer Lokaler Modus** from the menu bar or settings.
-
-See [docs/local-models.md](docs/local-models.md).
-
-## Contributing
-
-Contributions are welcome, especially if they make the preview easier to build, understand, or fork.
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
-
-## Support And Roadmap
-
-This preview has no formal support promise. See [SUPPORT.md](SUPPORT.md) for how to ask for help without sharing secrets.
-
-The current direction is documented in [ROADMAP.md](ROADMAP.md). Maintainer-facing release checks live in [docs/open-source-preflight.md](docs/open-source-preflight.md).
-
-## License
-
-Code is released under the MIT License. See [LICENSE](LICENSE).
-
-Project names, logos, and app icons are not automatically granted as trademarks or brand assets. See [TRADEMARKS.md](TRADEMARKS.md).
-
-## Legal / Impressum & Datenschutz
-
-This is an experimental, non-commercial open-source project, provided as-is under the MIT License without warranty or support. Nothing is sold here and no installation or operation is performed on your behalf.
-
-The companion website (blitztext.de) is operated by Blackboat Internet GmbH:
-
-- Impressum: https://www.blackboat.com/impressum
-- Datenschutz / Privacy: https://www.blackboat.com/datenschutz
+Begleitende Website (blitztext.de) betrieben von Blackboat Internet GmbH:
+[Impressum](https://www.blackboat.com/impressum) · [Datenschutz](https://www.blackboat.com/datenschutz)
