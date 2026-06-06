@@ -13,6 +13,23 @@ Kurzkontext:
 - Letzte Verifikation: `.venv/bin/python -m pytest tests/` → `110 passed, 9 skipped`; mit `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen` → `119 passed`. CI auf TimInTech grün (Python 3.11 + 3.12).
 - PR #1 (upstream) ist ein automatischer GitHub-Vorschlag (fremder Windows-Tauri-Port) – nicht anfassen. Eigener Linux-PR folgt später.
 
+## Changelog v0.2.23
+
+- feat: Design-System-Integration (Breeze-Dark/Glass) aus dem „Blitztext Design
+  System" portiert. Neues `app/theme.py` mit globalem QSS (weiche Rundungen,
+  Hairlines, Breeze-Blau-Fokus) und Marken-App-Icon (Mikrofon + Blitz, bevorzugt
+  `app/assets/logo-mark-dark.svg`, gezeichneter Fallback).
+- feat: `app/main_window.py` als Glass-Redesign — runder Amber-Record-„Shutter"
+  (`RecordButton`, QPainter) mit Mic-/Stop-/Spinner-Glyph und pulsierendem Ring
+  bei Aufnahme, Status-Punkt + Mono-Timer, Pill-Buttons (Verwerfen/Diktat),
+  runde Icon-Buttons (Vorlesen/Einstellungen), Verlauf mit Zähler. Funktion und
+  Test-Attribute (`_btn_toggle`/`_btn_dictation`/`_workflow_combo`) erhalten.
+- assets: `app/assets/logo-mark.svg` + `logo-mark-dark.svg` ins Repo übernommen;
+  App-/Fenster-Icon gesetzt. Tray-Status-Icons unverändert.
+- docs: Neue Screenshots `docs/screenshots/linux/main-window.png` (Bereit) und
+  `main-window-recording.png` (Aufnahme) im Glass-Design; README-Galerie ergänzt.
+- Verifikation: `119 passed` (offscreen GUI-Tests).
+
 ## Changelog v0.2.22
 
 - feat: Grafisches Hauptfenster (`app/main_window.py`) als Fallback zum globalen

@@ -17,30 +17,36 @@ Dieses Repository enthält zwei eigenständige Implementierungen:
 <table>
   <tr>
     <td align="center">
-      <img src="docs/screenshots/linux/main-window.png" alt="Hauptfenster mit Start/Stopp, Workflow-Auswahl und Schnellzugriffen" width="360"><br>
-      <sub><b>Hauptfenster</b> — grafischer Fallback zum Hotkey</sub>
+      <img src="docs/screenshots/linux/main-window.png" alt="Hauptfenster im Breeze-Dark/Glass-Design: Workflow-Auswahl, runder Aufnahme-Button, Status und Schnellzugriffe" width="340"><br>
+      <sub><b>Hauptfenster</b> — bereit (Glass-Dark-Design)</sub>
     </td>
+    <td align="center">
+      <img src="docs/screenshots/linux/main-window-recording.png" alt="Hauptfenster während der Aufnahme: roter Aufnahme-Button, Statuspunkt und laufender Timer" width="340"><br>
+      <sub><b>Hauptfenster</b> — Aufnahme läuft</sub>
+    </td>
+  </tr>
+  <tr>
     <td align="center">
       <img src="docs/screenshots/linux/settings-whisper.png" alt="Einstellungen: Spracherkennung mit Whisper-Modell, Backend, Hotkey-Modus" width="360"><br>
       <sub><b>Einstellungen → Spracherkennung</b></sub>
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <img src="docs/screenshots/linux/settings-ki-workflows.png" alt="Einstellungen: KI-Workflows mit OpenAI API-Key, Tonfall und Emoji-Dichte" width="360"><br>
       <sub><b>Einstellungen → KI-Workflows</b></sub>
     </td>
+  </tr>
+  <tr>
     <td align="center">
       <img src="docs/screenshots/linux/settings-allgemein.png" alt="Einstellungen: Allgemein mit Auto-Paste, Diktat-Notizordner und Verlaufsgröße" width="360"><br>
       <sub><b>Einstellungen → Allgemein</b></sub>
     </td>
-  </tr>
-  <tr>
     <td align="center">
       <img src="docs/screenshots/linux/history.png" alt="Verlaufs-Fenster mit Transkripten und Diktat-Einträgen" width="360"><br>
       <sub><b>Verlauf</b> — Transkripte & Diktat-Einträge</sub>
     </td>
-    <td align="center">
+  </tr>
+  <tr>
+    <td align="center" colspan="2">
       <img src="docs/screenshots/linux/tts.png" alt="Vorlesen-Fenster mit Stimmen- und Tempo-Auswahl (Piper TTS)" width="360"><br>
       <sub><b>Vorlesen</b> — Text-to-Speech via Piper</sub>
     </td>
