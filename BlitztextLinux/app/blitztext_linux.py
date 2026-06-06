@@ -14,8 +14,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import QObject, QThread, QThreadPool, QRunnable, pyqtSignal, pyqtSlot
-from PyQt6.QtGui import QAction, QIcon, QKeySequence
+from PyQt6.QtCore import QObject, Qt, QThread, QThreadPool, QRunnable, pyqtSignal, pyqtSlot
+from PyQt6.QtGui import QAction, QBrush, QColor, QIcon, QKeySequence, QPainter, QPen, QPixmap
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
     QFormLayout, QComboBox, QLineEdit, QCheckBox, QPlainTextEdit,
@@ -27,7 +27,7 @@ PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT_DIR not in sys.path:
     sys.path.insert(0, PROJECT_DIR)
 
-from app.config import Config
+from app.config import Config, VALID_HOTKEY_KEYS
 from app.llm_service import LLMService, WorkflowType, LLM_WORKFLOWS, LLMServiceError
 from app.hotkey_service import HotkeyWorker
 from app.audio_recorder import AudioRecorder, AudioRecorderError
@@ -153,6 +153,10 @@ class SettingsDialog(QDialog):
         self.combo_hotkey_mode.addItems(["toggle", "hold"])
         self.combo_hotkey_mode.setCurrentText(self.config.hotkey_mode)
 
+        self.combo_transcription_key = QComboBox()
+        self.combo_transcription_key.addItems(sorted(VALID_HOTKEY_KEYS))
+        self.combo_transcription_key.setCurrentText(self.config.transcription_hotkey)
+
         form_whisper.addRow("Whisper-Modell:", self.combo_model)
         form_whisper.addRow("", create_help_label("Wählen Sie die Modellgröße. Größere Modelle sind genauer, benötigen aber mehr Ressourcen."))
 
@@ -167,6 +171,9 @@ class SettingsDialog(QDialog):
 
         form_whisper.addRow("Hotkey-Modus:", self.combo_hotkey_mode)
         form_whisper.addRow("", create_help_label("toggle: Einmal drücken zum Starten, erneut drücken zum Stoppen.\nhold: Gedrückt halten zum Aufnehmen, Loslassen zum Stoppen."))
+
+        form_whisper.addRow("Aufnahme-Taste:", self.combo_transcription_key)
+        form_whisper.addRow("", create_help_label("Einzelne Taste ohne Modifier (z. B. KEY_LEFTALT). Änderung wird sofort übernommen."))
 
         self.tabs.addTab(tab_whisper, "Spracherkennung")
 
@@ -245,6 +252,7 @@ class SettingsDialog(QDialog):
             self.config.language = self.edit_language.text().strip()
             self.config.audio_device = self.edit_audio_device.text().strip()
             self.config.hotkey_mode = self.combo_hotkey_mode.currentText()
+            self.config.transcription_hotkey = self.combo_transcription_key.currentText()
 
             self.config.openai_api_key = self.edit_api_key.text().strip()
             self.config.text_improver_tone = self.combo_tone.currentText()
@@ -264,6 +272,7 @@ class _WorkerSignals(QObject):
     status_changed = pyqtSignal(str)  # "transcribing" | "rewriting"
     result = pyqtSignal(str)
     error = pyqtSignal(str)
+    finished = pyqtSignal(object)
 
 
 class _TranscribeWorker(QRunnable):
@@ -291,9 +300,15 @@ class _TranscribeWorker(QRunnable):
         self.autopaste = autopaste
         self.paste_service = paste_service
 
+    def _emit(self, signal_name: str, *args) -> None:
+        try:
+            getattr(self.signals, signal_name).emit(*args)
+        except RuntimeError as exc:
+            logger.debug("Skipping worker signal %s after Qt object cleanup: %s", signal_name, exc)
+
     def run(self) -> None:
         try:
-            self.signals.status_changed.emit("transcribing")
+            self._emit("status_changed", "transcribing")
             transcript = transcribe(
                 wav_file=self.wav_file,
                 model=self.model,
@@ -306,7 +321,7 @@ class _TranscribeWorker(QRunnable):
 
             # LLM rewrite if it is an LLM workflow
             if self.workflow in LLM_WORKFLOWS:
-                self.signals.status_changed.emit("rewriting")
+                self._emit("status_changed", "rewriting")
                 if not self.llm_service.is_available():
                     raise LLMServiceError(
                         "OpenAI API-Key nicht konfiguriert. Bitte in den Einstellungen eintragen."
@@ -321,9 +336,9 @@ class _TranscribeWorker(QRunnable):
             else:
                 self.paste_service.clipboard_only(result_text)
 
-            self.signals.result.emit(result_text)
+            self._emit("result", result_text)
         except Exception as e:
-            self.signals.error.emit(str(e))
+            self._emit("error", str(e))
         finally:
             # Clean up WAV file
             try:
@@ -331,6 +346,7 @@ class _TranscribeWorker(QRunnable):
                     self.wav_file.unlink()
             except OSError as exc:
                 logger.warning("Failed to delete temp WAV file %s: %s", self.wav_file, exc)
+            self._emit("finished", self)
 
 
 class BlitztextApp(QObject):
@@ -353,6 +369,8 @@ class BlitztextApp(QObject):
         # State machine state: "IDLE", "RECORDING", "TRANSCRIBING", "LLM_REWRITING"
         self.state = "IDLE"
         self.current_workflow: Optional[WorkflowType] = None
+        self._tray_error_message: Optional[str] = None
+        self._active_workers: list[_TranscribeWorker] = []
 
         # Tray setup
         self.setup_tray()
@@ -364,9 +382,18 @@ class BlitztextApp(QObject):
 
     def setup_tray(self) -> None:
         self.tray_icon = QSystemTrayIcon(self)
+        self._tray_icons = {
+            "IDLE": self._create_microphone_icon(QColor("#2e7d32")),
+            "RECORDING": self._create_microphone_icon(QColor("#c62828")),
+            "TRANSCRIBING": self._create_microphone_icon(QColor("#ef6c00")),
+            "LLM_REWRITING": self._create_microphone_icon(QColor("#ef6c00")),
+            "ERROR": self._create_microphone_icon(QColor("#757575")),
+        }
 
         # Load standard icon fallback
-        icon = QIcon.fromTheme("audio-input-microphone")
+        icon = self._tray_icons["IDLE"]
+        if icon.isNull():
+            icon = QIcon.fromTheme("audio-input-microphone")
         if icon.isNull():
             icon = self.app.style().standardIcon(QStyle.StandardPixmap.SP_MediaVolume)
         self.tray_icon.setIcon(icon)
@@ -415,6 +442,22 @@ class BlitztextApp(QObject):
 
         self.tray_icon.show()
 
+    def _create_microphone_icon(self, color: QColor) -> QIcon:
+        pixmap = QPixmap(64, 64)
+        pixmap.fill(Qt.GlobalColor.transparent)
+
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(QPen(color, 5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
+        painter.setBrush(QBrush(color))
+        painter.drawRoundedRect(23, 8, 18, 29, 9, 9)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawArc(15, 23, 34, 25, 200 * 16, 140 * 16)
+        painter.drawLine(32, 46, 32, 55)
+        painter.drawLine(24, 55, 40, 55)
+        painter.end()
+        return QIcon(pixmap)
+
     def update_menu_availability(self) -> None:
         available = self.llm_service.is_available()
         self.action_improver.setEnabled(available)
@@ -425,7 +468,10 @@ class BlitztextApp(QObject):
         self.stop_hotkey_worker()
 
         self.hotkey_thread = QThread()
-        self.hotkey_worker = HotkeyWorker(hotkey_mode=self.config.hotkey_mode)
+        self.hotkey_worker = HotkeyWorker(
+            hotkey_mode=self.config.hotkey_mode,
+            transcription_key=self.config.transcription_hotkey,
+        )
         self.hotkey_worker.moveToThread(self.hotkey_thread)
 
         self.hotkey_thread.started.connect(self.hotkey_worker.run)
@@ -456,9 +502,16 @@ class BlitztextApp(QObject):
             )
             self.update_menu_availability()
 
-            # Restart hotkey listener if mode changed
-            if self.hotkey_worker and self.hotkey_worker._mode != self.config.hotkey_mode:
-                logger.info("Hotkey mode changed to %s. Restarting hotkey worker.", self.config.hotkey_mode)
+            # Restart hotkey listener if mode or key changed
+            if self.hotkey_worker and (
+                self.hotkey_worker._mode != self.config.hotkey_mode
+                or self.hotkey_worker._transcription_key != self.config.transcription_hotkey
+            ):
+                logger.info(
+                    "Hotkey config changed (mode=%s, key=%s). Restarting hotkey worker.",
+                    self.config.hotkey_mode,
+                    self.config.transcription_hotkey,
+                )
                 self.start_hotkey_worker()
 
     def _trigger_menu_workflow(self, workflow: WorkflowType) -> None:
@@ -471,15 +524,13 @@ class BlitztextApp(QObject):
         if self.state == "IDLE":
             try:
                 self.audio_recorder.start(device=self.config.audio_device)
-                self.state = "RECORDING"
                 self.current_workflow = workflow
-                self.update_tray_state()
+                self._set_state("RECORDING", f"workflow {workflow.value} started")
             except AudioRecorderError as e:
                 logger.error("Failed to start recording: %s", e)
                 self.show_tray_error("Aufnahme-Fehler", f"Aufnahme konnte nicht gestartet werden: {e}")
-                self.state = "IDLE"
                 self.current_workflow = None
-                self.update_tray_state()
+                self._set_state("IDLE", "recording start failed")
 
         elif self.state == "RECORDING":
             if self.config.hotkey_mode == "toggle":
@@ -512,13 +563,11 @@ class BlitztextApp(QObject):
             if not wav_path:
                 logger.warning("No audio was recorded")
                 self.show_tray_warning("Blitztext", "Keine Audioaufnahme erfasst.")
-                self.state = "IDLE"
                 self.current_workflow = None
-                self.update_tray_state()
+                self._set_state("IDLE", "empty recording")
                 return
 
-            self.state = "TRANSCRIBING"
-            self.update_tray_state()
+            self._set_state("TRANSCRIBING", "recording stopped")
 
             # Ensure PasteService has the latest autopaste configuration
             self.paste_service.autopaste = self.config.autopaste
@@ -538,48 +587,76 @@ class BlitztextApp(QObject):
             worker.signals.status_changed.connect(self._on_worker_status_changed)
             worker.signals.result.connect(self._on_worker_result)
             worker.signals.error.connect(self._on_worker_error)
+            worker.signals.finished.connect(self._on_worker_finished)
 
+            self._active_workers.append(worker)
             QThreadPool.globalInstance().start(worker)
 
         except AudioRecorderError as e:
             logger.error("Failed to stop recording: %s", e)
             self.show_tray_error("Aufnahme-Fehler", f"Aufnahme konnte nicht sauber gestoppt werden: {e}")
-            self.state = "IDLE"
             self.current_workflow = None
-            self.update_tray_state()
+            self._set_state("IDLE", "recording stop failed")
 
     @pyqtSlot(str)
     def _on_worker_status_changed(self, status: str) -> None:
         if status == "transcribing":
-            self.state = "TRANSCRIBING"
+            self._set_state("TRANSCRIBING", "worker status transcribing")
         elif status == "rewriting":
-            self.state = "LLM_REWRITING"
-        self.update_tray_state()
+            self._set_state("LLM_REWRITING", "worker status rewriting")
+        else:
+            self.update_tray_state()
 
     @pyqtSlot(str)
     def _on_worker_result(self, result_text: str) -> None:
         logger.info("Transcription/Rewrite success. Result length: %d chars", len(result_text))
-        self.state = "IDLE"
         self.current_workflow = None
-        self.update_tray_state()
+        self._set_state("IDLE", "worker result")
 
     @pyqtSlot(str)
     def _on_worker_error(self, err_msg: str) -> None:
         logger.error("Worker error: %s", err_msg)
         self.show_tray_error("Blitztext Fehler", err_msg)
-        self.state = "IDLE"
         self.current_workflow = None
+        self._set_state("IDLE", "worker error", keep_error=True)
+
+    @pyqtSlot(object)
+    def _on_worker_finished(self, worker: object) -> None:
+        try:
+            self._active_workers.remove(worker)
+        except ValueError:
+            pass
+
+    def _set_state(self, new_state: str, reason: str, keep_error: bool = False) -> None:
+        old_state = self.state
+        if not keep_error and new_state != "IDLE":
+            self._tray_error_message = None
+        if old_state != new_state:
+            logger.debug("State changed: %s -> %s (%s)", old_state, new_state, reason)
+        else:
+            logger.debug("State unchanged: %s (%s)", new_state, reason)
+        self.state = new_state
+        self._on_state_changed()
+
+    def _on_state_changed(self) -> None:
         self.update_tray_state()
 
     def update_tray_state(self) -> None:
-        if self.state == "IDLE":
+        if self._tray_error_message:
+            self.tray_icon.setIcon(self._tray_icons["ERROR"])
+            self.tray_icon.setToolTip(f"Blitztext Fehler: {self._tray_error_message}")
+        elif self.state == "IDLE":
+            self.tray_icon.setIcon(self._tray_icons["IDLE"])
             self.tray_icon.setToolTip("Blitztext")
         elif self.state == "RECORDING":
+            self.tray_icon.setIcon(self._tray_icons["RECORDING"])
             wf_name = self.current_workflow.value if self.current_workflow else ""
             self.tray_icon.setToolTip(f"Aufnahme läuft… ({wf_name})")
         elif self.state == "TRANSCRIBING":
+            self.tray_icon.setIcon(self._tray_icons["TRANSCRIBING"])
             self.tray_icon.setToolTip("Transkribiere…")
         elif self.state == "LLM_REWRITING":
+            self.tray_icon.setIcon(self._tray_icons["LLM_REWRITING"])
             self.tray_icon.setToolTip("Verarbeite mit KI…")
 
     @pyqtSlot(str)
@@ -588,6 +665,8 @@ class BlitztextApp(QObject):
         self.show_tray_error("Hotkey Fehler", err_msg)
 
     def show_tray_error(self, title: str, message: str) -> None:
+        self._tray_error_message = message
+        self.update_tray_state()
         self.tray_icon.showMessage(title, message, QSystemTrayIcon.MessageIcon.Critical, 10000)
 
     def show_tray_warning(self, title: str, message: str) -> None:
@@ -604,7 +683,7 @@ class BlitztextApp(QObject):
 def main() -> int:
     """Application entry point."""
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG if os.environ.get("BLITZTEXT_DEBUG") else logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
         datefmt="%H:%M:%S",
     )

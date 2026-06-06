@@ -2,7 +2,7 @@
 import time
 import pytest
 from unittest.mock import MagicMock, patch, call
-from app.hotkey_service import HotkeyService, HotkeyMode
+from app.hotkey_service import HotkeyService, HotkeyMode, _modifier_match, _refresh_keyboard_devices
 
 
 @pytest.fixture
@@ -258,6 +258,161 @@ class TestHoldModeAppFlow:
         app._on_workflow_triggered(WorkflowType.EMOJI_TEXT)  # anderer Hotkey gedrückt
         assert app.state == "RECORDING"
         stop_mock.assert_not_called()
+
+
+class TestModifierMatch:
+    """Testet _modifier_match für modifier-freie und modifier-gebundene Hotkeys."""
+
+    # Dummy-Keycodes für Tests
+    META_L = 1001
+    META_R = 1002
+    SHIFT_L = 1003
+    SHIFT_R = 1004
+    ALL_META = {META_L, META_R}
+    ALL_SHIFT = {SHIFT_L, SHIFT_R}
+    LEFTALT = 1005
+
+    def test_empty_modifiers_no_keys_pressed(self):
+        """Modifier-freier Hotkey matcht wenn keine Modifier gedrückt."""
+        pressed: set = set()
+        assert _modifier_match(pressed, set(), set(), self.ALL_META, self.ALL_SHIFT) is True
+
+    def test_empty_modifiers_meta_pressed_no_match(self):
+        """Modifier-freier Hotkey matcht NICHT wenn Meta gedrückt ist."""
+        pressed = {self.META_L}
+        assert _modifier_match(pressed, set(), set(), self.ALL_META, self.ALL_SHIFT) is False
+
+    def test_empty_modifiers_shift_pressed_no_match(self):
+        """Modifier-freier Hotkey matcht NICHT wenn Shift gedrückt ist."""
+        pressed = {self.SHIFT_R}
+        assert _modifier_match(pressed, set(), set(), self.ALL_META, self.ALL_SHIFT) is False
+
+    def test_empty_modifiers_meta_and_shift_pressed_no_match(self):
+        pressed = {self.META_L, self.SHIFT_L}
+        assert _modifier_match(pressed, set(), set(), self.ALL_META, self.ALL_SHIFT) is False
+
+    def test_left_alt_trigger_does_not_count_as_blocking_modifier(self):
+        """KEY_LEFTALT darf sich als modifier-freier Trigger nicht selbst blockieren."""
+        pressed = {self.LEFTALT}
+        assert _modifier_match(pressed, set(), set(), self.ALL_META, self.ALL_SHIFT) is True
+
+    def test_meta_required_meta_pressed_matches(self):
+        """Meta-Hotkey matcht wenn Meta gedrückt."""
+        pressed = {self.META_L}
+        meta_codes = {self.META_L, self.META_R}
+        assert _modifier_match(pressed, meta_codes, set(), self.ALL_META, self.ALL_SHIFT) is True
+
+    def test_meta_required_no_meta_no_match(self):
+        """Meta-Hotkey matcht NICHT ohne Meta."""
+        assert _modifier_match(set(), {self.META_L, self.META_R}, set(), self.ALL_META, self.ALL_SHIFT) is False
+
+    def test_meta_and_shift_required_both_pressed_matches(self):
+        pressed = {self.META_L, self.SHIFT_L}
+        meta_codes = {self.META_L, self.META_R}
+        shift_codes = {self.SHIFT_L, self.SHIFT_R}
+        assert _modifier_match(pressed, meta_codes, shift_codes, self.ALL_META, self.ALL_SHIFT) is True
+
+    def test_meta_required_shift_also_pressed_no_match(self):
+        """Meta-Hotkey ohne Shift-Anforderung matcht NICHT wenn Shift gedrückt."""
+        pressed = {self.META_L, self.SHIFT_L}
+        meta_codes = {self.META_L, self.META_R}
+        assert _modifier_match(pressed, meta_codes, set(), self.ALL_META, self.ALL_SHIFT) is False
+
+    def test_modifier_free_hotkey_starts_on_keydown(self):
+        """KEY_DOWN einer modifier-freien Taste löst on_start aus (Hold-Modus)."""
+        start = MagicMock()
+        stop = MagicMock()
+        svc = HotkeyService(mode=HotkeyMode.HOLD, on_start=start, on_stop=stop)
+        svc.simulate_key_down()
+        start.assert_called_once()
+        stop.assert_not_called()
+
+    def test_modifier_free_hotkey_stops_on_keyup(self):
+        """KEY_UP einer modifier-freien Taste löst on_stop aus (Hold-Modus)."""
+        start = MagicMock()
+        stop = MagicMock()
+        svc = HotkeyService(mode=HotkeyMode.HOLD, on_start=start, on_stop=stop)
+        svc.simulate_key_down()
+        svc.simulate_key_up()
+        stop.assert_called_once()
+
+
+class TestKeyboardReconnect:
+    class FakeDevice:
+        def __init__(self, path, fd):
+            self.path = path
+            self.fd = fd
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    def test_refresh_keeps_existing_devices_when_paths_unchanged(self):
+        current = self.FakeDevice("/dev/input/event1", 10)
+        replacement = self.FakeDevice("/dev/input/event1", 11)
+
+        with patch("app.hotkey_service._discover_keyboards", return_value=[replacement]):
+            fd_to_dev = {current.fd: current}
+            refreshed = _refresh_keyboard_devices(fd_to_dev, "KEY_LEFTALT", "test")
+
+        assert refreshed is fd_to_dev
+        assert current.closed is False
+        assert replacement.closed is True
+
+    def test_refresh_replaces_devices_when_paths_change(self):
+        current = self.FakeDevice("/dev/input/event1", 10)
+        replacement = self.FakeDevice("/dev/input/event2", 11)
+
+        with patch("app.hotkey_service._discover_keyboards", return_value=[replacement]):
+            refreshed = _refresh_keyboard_devices({current.fd: current}, "KEY_LEFTALT", "test")
+
+        assert refreshed == {replacement.fd: replacement}
+        assert current.closed is True
+        assert replacement.closed is False
+
+
+class TestTrayIconRendering:
+    def test_microphone_icon_can_be_created(self):
+        import os
+        os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+        from PyQt6.QtGui import QColor, QGuiApplication
+        from app.blitztext_linux import BlitztextApp
+
+        app = QGuiApplication.instance() or QGuiApplication([])
+        icon = BlitztextApp._create_microphone_icon(object(), QColor("#2e7d32"))
+
+        assert icon.isNull() is False
+
+
+class TestTranscribeWorkerShutdown:
+    def test_worker_emit_ignores_deleted_qt_signal_object(self, tmp_path):
+        from app.blitztext_linux import _TranscribeWorker
+        from app.workflows import WorkflowType
+
+        class RaisingSignal:
+            def emit(self, *args):
+                raise RuntimeError("wrapped C/C++ object of type _WorkerSignals has been deleted")
+
+        class DeletedSignals:
+            status_changed = RaisingSignal()
+            result = RaisingSignal()
+            error = RaisingSignal()
+            finished = RaisingSignal()
+
+        worker = _TranscribeWorker(
+            wav_file=tmp_path / "missing.wav",
+            model="base",
+            language="de",
+            backend="openai-whisper",
+            workflow=WorkflowType.TRANSCRIPTION,
+            llm_service=MagicMock(),
+            autopaste=False,
+            paste_service=MagicMock(),
+        )
+        worker.signals = DeletedSignals()
+
+        worker._emit("result", "text")
 
 
 class TestModeFromConfig:

@@ -75,6 +75,37 @@ class TestWorkflowConfig:
         assert config.workflows["dampf_system_prompt"] == ""
 
 
+class TestTranscriptionHotkey:
+    def test_default_transcription_hotkey(self, config):
+        assert config.transcription_hotkey == "KEY_LEFTALT"
+
+    def test_set_valid_transcription_hotkey(self, config):
+        config.transcription_hotkey = "KEY_F13"
+        assert config.transcription_hotkey == "KEY_F13"
+
+    def test_invalid_transcription_hotkey_raises(self, config):
+        with pytest.raises(ValueError):
+            config.transcription_hotkey = "KEY_SPACE"
+
+    def test_transcription_hotkey_persists(self, config, config_dir):
+        config.transcription_hotkey = "KEY_RIGHTCTRL"
+        config.save()
+        loaded = BlitztextConfig(config_dir=config_dir)
+        assert loaded.transcription_hotkey == "KEY_RIGHTCTRL"
+
+    def test_hotkey_mode_toggle_persists(self, config, config_dir):
+        config.hotkey_mode = "toggle"
+        config.save()
+        loaded = BlitztextConfig(config_dir=config_dir)
+        assert loaded.hotkey_mode == "toggle"
+
+    def test_hotkey_mode_hold_persists(self, config, config_dir):
+        config.hotkey_mode = "hold"
+        config.save()
+        loaded = BlitztextConfig(config_dir=config_dir)
+        assert loaded.hotkey_mode == "hold"
+
+
 class TestAPIKeyHandling:
     def test_has_api_key_false_when_empty(self, config):
         config.openai_api_key = ""
