@@ -34,12 +34,12 @@ The intent is not to ship a one-click finished app. The intent is to make a real
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/online-mode.png" alt="Blitztext online transcription mode" width="420"></td>
-    <td><img src="docs/screenshots/local-mode.png" alt="Blitztext secure local transcription mode" width="420"></td>
+    <td><img src="../docs/screenshots/online-mode.png" alt="Blitztext online transcription mode" width="420"></td>
+    <td><img src="../docs/screenshots/local-mode.png" alt="Blitztext secure local transcription mode" width="420"></td>
   </tr>
   <tr>
-    <td><img src="docs/screenshots/local-model-picker.png" alt="Blitztext local model picker" width="420"></td>
-    <td><img src="docs/screenshots/settings-customize.png" alt="Blitztext settings and customization view" width="420"></td>
+    <td><img src="../docs/screenshots/local-model-picker.png" alt="Blitztext local model picker" width="420"></td>
+    <td><img src="../docs/screenshots/settings-customize.png" alt="Blitztext settings and customization view" width="420"></td>
   </tr>
 </table>
 
@@ -84,7 +84,7 @@ On first launch, either paste your own OpenAI API key for online workflows or in
 
 For fully local transcription, install a WhisperKit CoreML model and enable **Sicherer Lokaler Modus** in the app.
 
-For a slower, more explicit walkthrough, see [docs/setup.md](docs/setup.md).
+For a slower, more explicit walkthrough, see [docs/setup.md](../docs/setup.md).
 
 ## Permissions
 
@@ -109,7 +109,7 @@ Local transcription:  Your Mac -> WhisperKit/CoreML on device
 
 The app stores your OpenAI API key in the user's macOS Keychain.
 
-Read [docs/privacy.md](docs/privacy.md) before using the preview with sensitive content.
+Read [docs/privacy.md](../docs/privacy.md) before using the preview with sensitive content.
 
 ## Project Structure
 
@@ -127,25 +127,25 @@ docs/           Setup, privacy, roadmap, preflight, landing page notes
 
 Local transcription is available as an experimental WhisperKit/CoreML path. The app does not bundle a model; choose one in the app, click install, and then switch on **Sicherer Lokaler Modus** from the menu bar or settings.
 
-See [docs/local-models.md](docs/local-models.md).
+See [docs/local-models.md](../docs/local-models.md).
 
 ## Contributing
 
 Contributions are welcome, especially if they make the preview easier to build, understand, or fork.
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+Please read [CONTRIBUTING.md](../CONTRIBUTING.md) first.
 
 ## Support And Roadmap
 
-This preview has no formal support promise. See [SUPPORT.md](SUPPORT.md) for how to ask for help without sharing secrets.
+This preview has no formal support promise. See [SUPPORT.md](../SUPPORT.md) for how to ask for help without sharing secrets.
 
-The current direction is documented in [ROADMAP.md](ROADMAP.md). Maintainer-facing release checks live in [docs/open-source-preflight.md](docs/open-source-preflight.md).
+The current direction is documented in [ROADMAP.md](../ROADMAP.md). Maintainer-facing release checks live in [docs/open-source-preflight.md](../docs/open-source-preflight.md).
 
 ## License
 
-Code is released under the MIT License. See [LICENSE](LICENSE).
+Code is released under the MIT License. See [LICENSE](../LICENSE).
 
-Project names, logos, and app icons are not automatically granted as trademarks or brand assets. See [TRADEMARKS.md](TRADEMARKS.md).
+Project names, logos, and app icons are not automatically granted as trademarks or brand assets. See [TRADEMARKS.md](../TRADEMARKS.md).
 
 ## Legal / Impressum & Datenschutz
 
