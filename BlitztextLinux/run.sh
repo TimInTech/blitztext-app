@@ -4,7 +4,23 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PYTHON="${SCRIPT_DIR}/.venv/bin/python"
+LOCKFILE="/tmp/blitztext_linux.pid"
 
+# --- Single-Instance-Guard ---
+if [[ -f "${LOCKFILE}" ]]; then
+    OLD_PID="$(cat "${LOCKFILE}")"
+    if kill -0 "${OLD_PID}" 2>/dev/null; then
+        echo "BlitztextLinux läuft bereits (PID ${OLD_PID}). Abbruch." >&2
+        exit 1
+    else
+        echo "Stale PID ${OLD_PID} gefunden – wird bereinigt." >&2
+        rm -f "${LOCKFILE}"
+    fi
+fi
+echo $$ > "${LOCKFILE}"
+trap 'rm -f "${LOCKFILE}"' EXIT INT TERM
+
+# --- venv-Prüfung ---
 if [[ ! -x "${VENV_PYTHON}" ]]; then
     echo "FEHLER: .venv nicht gefunden. Bitte zuerst 'bash scripts/install.sh' ausführen." >&2
     exit 1
