@@ -483,10 +483,14 @@ class BlitztextApp(QObject):
 
         elif self.state == "RECORDING":
             if self.config.hotkey_mode == "toggle":
-                if workflow == self.current_workflow:
-                    self._stop_recording_and_process()
-                else:
-                    logger.info("Ignored hotkey trigger for different workflow %s during recording %s", workflow, self.current_workflow)
+                if workflow != self.current_workflow:
+                    # Any hotkey press stops the active recording — same-key or different-key.
+                    # After processing finishes (IDLE), the user can trigger a new workflow.
+                    logger.info(
+                        "Different workflow %s pressed — stopping active recording %s.",
+                        workflow, self.current_workflow,
+                    )
+                self._stop_recording_and_process()
             else:
                 logger.info("Ignored hotkey trigger %s during recording %s in hold mode", workflow, self.current_workflow)
 

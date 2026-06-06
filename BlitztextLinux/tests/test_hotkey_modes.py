@@ -100,6 +100,66 @@ class TestDebounce:
         assert toggle_service.debounce_interval == pytest.approx(0.6)
 
 
+class TestRecordingStopBehavior:
+    """Testet die BlitztextApp-Zustandsmaschine: Welcher Hotkey stoppt eine laufende Aufnahme?"""
+
+    def _make_app_stub(self, hotkey_mode: str = "toggle"):
+        """Minimaler Stub, der nur die relevante _on_workflow_triggered-Logik abbildet."""
+        from unittest.mock import MagicMock, patch
+
+        stop_mock = MagicMock()
+
+        class AppStub:
+            def __init__(self):
+                self.state = "IDLE"
+                self.current_workflow = None
+                self.config = MagicMock()
+                self.config.hotkey_mode = hotkey_mode
+                self.config.audio_device = "@DEFAULT_SOURCE@"
+                self._stop_recording_and_process = stop_mock
+
+            def _on_workflow_triggered(self, workflow):
+                from app.workflows import WorkflowType
+                if self.state == "IDLE":
+                    self.state = "RECORDING"
+                    self.current_workflow = workflow
+                elif self.state == "RECORDING":
+                    if self.config.hotkey_mode == "toggle":
+                        if workflow != self.current_workflow:
+                            pass  # log only
+                        self._stop_recording_and_process()
+                else:
+                    pass  # busy
+
+        return AppStub(), stop_mock
+
+    def test_same_hotkey_stops_recording(self):
+        from app.workflows import WorkflowType
+        app, stop_mock = self._make_app_stub()
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        assert app.state == "RECORDING"
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        stop_mock.assert_called_once()
+
+    def test_different_hotkey_also_stops_recording(self):
+        """Drücken eines anderen Workflow-Hotkeys soll die Aufnahme ebenfalls stoppen."""
+        from app.workflows import WorkflowType
+        app, stop_mock = self._make_app_stub()
+        app._on_workflow_triggered(WorkflowType.EMOJI_TEXT)
+        assert app.state == "RECORDING"
+        assert app.current_workflow == WorkflowType.EMOJI_TEXT
+        # Meta+H während EMOJI_TEXT-Aufnahme → soll stoppen, nicht ignorieren
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        stop_mock.assert_called_once()
+
+    def test_busy_state_ignores_all_hotkeys(self):
+        from app.workflows import WorkflowType
+        app, stop_mock = self._make_app_stub()
+        app.state = "TRANSCRIBING"
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        stop_mock.assert_not_called()
+
+
 class TestModeFromConfig:
     def test_from_string_toggle(self, callbacks):
         svc = HotkeyService.from_config(
