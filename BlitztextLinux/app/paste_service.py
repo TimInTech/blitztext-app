@@ -23,6 +23,11 @@ logger = logging.getLogger("blitztext.paste_service")
 _PASTE_DELAY = 0.15
 # ydotool key-delay in ms (identisch zu whisper-dictation)
 _KEY_DELAY_MS = 80
+# Subprocess-Timeouts: verhindern, dass ein haengendes wl-copy/ydotool den
+# Transkriptions-Worker dauerhaft blockiert (sonst bleibt der App-State auf
+# TRANSCRIBING/LLM_REWRITING haengen und kein neuer Hotkey-Toggle ist moeglich).
+_WL_COPY_TIMEOUT = 5.0
+_YDOTOOL_TIMEOUT = 5.0
 
 
 class PasteServiceError(Exception):
@@ -84,8 +89,13 @@ class PasteService:
                 check=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
+                timeout=_WL_COPY_TIMEOUT,
             )
             logger.debug("wl-copy: %d Zeichen ins Clipboard geschrieben.", len(text))
+        except subprocess.TimeoutExpired as exc:
+            raise PasteServiceError(
+                f"wl-copy reagierte nicht innerhalb von {_WL_COPY_TIMEOUT:.0f}s"
+            ) from exc
         except subprocess.CalledProcessError as exc:
             stderr = exc.stderr.decode(errors="replace").strip() if exc.stderr else ""
             raise PasteServiceError(f"wl-copy fehlgeschlagen: {stderr}") from exc
@@ -99,12 +109,23 @@ class PasteService:
             return
         # Kurze Pause damit Clipboard-Inhalt sicher verfuegbar ist
         time.sleep(_PASTE_DELAY)
-        result = subprocess.run(
-            ["ydotool", "key", "--key-delay", str(_KEY_DELAY_MS), "ctrl+v"],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-        )
+        try:
+            result = subprocess.run(
+                ["ydotool", "key", "--key-delay", str(_KEY_DELAY_MS), "ctrl+v"],
+                check=False,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                timeout=_YDOTOOL_TIMEOUT,
+            )
+        except subprocess.TimeoutExpired:
+            # Nicht fatal -- Clipboard-Inhalt ist bereits gesetzt. Wichtig: nicht
+            # blockieren, damit der Worker zurueckkehrt und der State auf IDLE faellt.
+            logger.warning(
+                "ydotool Ctrl+V Timeout nach %.0fs -- Auto-Paste uebersprungen "
+                "(Text liegt bereits im Clipboard).",
+                _YDOTOOL_TIMEOUT,
+            )
+            return
         if result.returncode != 0:
             stderr = result.stderr.decode(errors="replace").strip() if result.stderr else ""
             # Nicht fatal -- Clipboard-Inhalt ist bereits gesetzt
