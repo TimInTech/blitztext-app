@@ -160,6 +160,106 @@ class TestRecordingStopBehavior:
         stop_mock.assert_not_called()
 
 
+class TestHoldModeAppFlow:
+    """Testet die App-seitige HOLD-Logik: _on_workflow_triggered + _on_recording_stop."""
+
+    def _make_app_stub(self, hotkey_mode: str = "hold"):
+        from unittest.mock import MagicMock
+
+        stop_mock = MagicMock()
+        start_recording_mock = MagicMock()
+
+        class AppStub:
+            def __init__(self):
+                self.state = "IDLE"
+                self.current_workflow = None
+                self.config = MagicMock()
+                self.config.hotkey_mode = hotkey_mode
+                self.config.audio_device = "@DEFAULT_SOURCE@"
+                self._stop_recording_and_process = stop_mock
+
+            def _on_workflow_triggered(self, workflow):
+                from app.workflows import WorkflowType
+                if self.state == "IDLE":
+                    self.state = "RECORDING"
+                    self.current_workflow = workflow
+                    start_recording_mock()
+                elif self.state == "RECORDING":
+                    if self.config.hotkey_mode == "toggle":
+                        self._stop_recording_and_process()
+                    # hold mode: ignored during recording
+
+            def _on_recording_stop(self):
+                if self.state == "RECORDING":
+                    if self.config.hotkey_mode == "hold":
+                        self._stop_recording_and_process()
+
+        return AppStub(), stop_mock, start_recording_mock
+
+    def test_hold_keydown_starts_recording(self):
+        from app.workflows import WorkflowType
+        app, stop_mock, start_mock = self._make_app_stub("hold")
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        assert app.state == "RECORDING"
+        assert app.current_workflow == WorkflowType.TRANSCRIPTION
+        start_mock.assert_called_once()
+        stop_mock.assert_not_called()
+
+    def test_hold_keyup_stops_and_processes(self):
+        from app.workflows import WorkflowType
+        app, stop_mock, _ = self._make_app_stub("hold")
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        app._on_recording_stop()
+        stop_mock.assert_called_once()
+
+    def test_hold_full_cycle_start_then_stop(self):
+        """Taste halten → aufnehmen; loslassen → Transkription starten."""
+        from app.workflows import WorkflowType
+        app, stop_mock, start_mock = self._make_app_stub("hold")
+        # Simulate: key down
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        assert app.state == "RECORDING"
+        stop_mock.assert_not_called()
+        # Simulate: key up
+        app._on_recording_stop()
+        stop_mock.assert_called_once()
+
+    def test_hold_second_keydown_ignored_during_recording(self):
+        """Im Hold-Modus soll ein zweiter KEY_DOWN die Aufnahme nicht stoppen."""
+        from app.workflows import WorkflowType
+        app, stop_mock, start_mock = self._make_app_stub("hold")
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)  # Autorepeat / zweiter Druck
+        assert app.state == "RECORDING"
+        stop_mock.assert_not_called()
+        start_mock.assert_called_once()  # nur einmal gestartet
+
+    def test_hold_recording_stop_ignored_if_not_recording(self):
+        """_on_recording_stop im IDLE-Zustand soll nichts tun."""
+        app, stop_mock, _ = self._make_app_stub("hold")
+        assert app.state == "IDLE"
+        app._on_recording_stop()
+        stop_mock.assert_not_called()
+
+    def test_toggle_mode_recording_stop_is_noop(self):
+        """Im Toggle-Modus soll recording_stop ignoriert werden."""
+        from app.workflows import WorkflowType
+        app, stop_mock, _ = self._make_app_stub("toggle")
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        assert app.state == "RECORDING"
+        app._on_recording_stop()
+        stop_mock.assert_not_called()
+
+    def test_hold_different_keydown_during_recording_ignored(self):
+        """Im Hold-Modus soll ein anderer Workflow-Hotkey die Aufnahme NICHT stoppen."""
+        from app.workflows import WorkflowType
+        app, stop_mock, _ = self._make_app_stub("hold")
+        app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
+        app._on_workflow_triggered(WorkflowType.EMOJI_TEXT)  # anderer Hotkey gedrückt
+        assert app.state == "RECORDING"
+        stop_mock.assert_not_called()
+
+
 class TestModeFromConfig:
     def test_from_string_toggle(self, callbacks):
         svc = HotkeyService.from_config(

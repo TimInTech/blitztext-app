@@ -17,7 +17,7 @@ DEFAULTS: dict[str, Any] = {
     "model": "base",
     "language": "de",
     "backend": "openai-whisper",
-    "hotkey_mode": "toggle",
+    "hotkey_mode": "hold",
     "openai_api_key": "",
     "autopaste": True,
     "audio_device": "@DEFAULT_SOURCE@",
