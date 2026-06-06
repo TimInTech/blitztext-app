@@ -2,14 +2,16 @@
 
 Aktuelle Uebergabe fuer den naechsten Chat:
 
-- [HANDOVER-2026-06-06.md](HANDOVER-2026-06-06.md)
+- [HANDOVER-2026-06-06-session2.md](HANDOVER-2026-06-06-session2.md) (aktuell)
+- [HANDOVER-2026-06-06.md](HANDOVER-2026-06-06.md) (vorherige Session: evdev-Hotkey)
 
 Kurzkontext:
 
-- Projektpfad: `/home/timintech/projects/blitztext-app/BlitztextLinux`
-- Branch: `feature/linux-port`
-- Fokus der letzten Arbeit: evdev-Hotkey-Zuverlaessigkeit fuer `KEY_LEFTALT`, Debug-Logging, Tray-State-Feedback und Shutdown-Crash beim Beenden waehrend `TRANSCRIBING`.
-- Letzte Verifikation: `.venv/bin/python -m pytest tests/ -v` mit `91 passed, 4 skipped` (GUI-Tests via `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen`).
+- Projektpfad: `/home/timintech/projects/blitztext-app/BlitztextLinux` (Unterordner; Repo-Root `blitztext-app`, daneben `BlitztextMac`)
+- Branch: `feature/linux-port`; Remotes: `origin`=`TimInTech/blitztext-app` (pushen), `upstream`=`cmagnussen/blitztext-app`
+- Fokus der letzten Arbeit: Hotkey-Hang-Bugfix (Paste-Subprocess-Timeouts + `wl-copy` DEVNULL), neue Features (Diktat/Verlauf/Vorlesen/Notifications), grafisches Hauptfenster (Start/Stopp-Fallback), GitHub-Actions-CI.
+- Letzte Verifikation: `.venv/bin/python -m pytest tests/` → `110 passed, 9 skipped`; mit `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen` → `119 passed`. CI auf TimInTech grün (Python 3.11 + 3.12).
+- PR #1 (upstream) ist ein automatischer GitHub-Vorschlag (fremder Windows-Tauri-Port) – nicht anfassen. Eigener Linux-PR folgt später.
 
 ## Changelog v0.2.22
 
