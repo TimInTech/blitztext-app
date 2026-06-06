@@ -63,6 +63,23 @@ Dazu Komfort-Funktionen: **Diktat-Modus** (Markdown-Notizen), **Verlauf** (Kopie
 
 ---
 
+## Status auf einen Blick — Tray-Symbol
+
+Das Mikrofon-Symbol im System-Tray signalisiert über seine Farbe den aktuellen Zustand:
+
+<p align="center">
+  <img src="docs/screenshots/linux/tray-states.png" alt="Tray-Symbol in den Farben grün (Bereit), rot (Aufnahme), orange (Verarbeitung) und grau (Fehler)" width="640">
+</p>
+
+| Farbe | Zustand | Bedeutung |
+| :---: | :--- | :--- |
+| 🟢 **Grün** | Bereit (IDLE) | Wartet auf Hotkey oder Klick. |
+| 🔴 **Rot** | Aufnahme | Mikrofon nimmt gerade auf. |
+| 🟠 **Orange** | Verarbeitung | Transkription bzw. LLM-Umschreibung läuft. |
+| ⚪ **Grau** | Fehler | Letzter Vorgang ist fehlgeschlagen. |
+
+---
+
 ## Schnellstart (Linux)
 
 ```bash

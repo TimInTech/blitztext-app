@@ -84,6 +84,26 @@ Blitztext Linux registriert globale Hotkeys über die Linux-Input-Subsysteme (`e
 
 ---
 
+## Tray-Symbol: Statusfarben
+
+Das Mikrofon-Symbol im System-Tray zeigt über seine Farbe den aktuellen Zustand der State-Machine an:
+
+<p align="center">
+  <img src="../docs/screenshots/linux/tray-states.png" alt="Tray-Symbol in grün (Bereit), rot (Aufnahme), orange (Verarbeitung) und grau (Fehler)" width="640">
+</p>
+
+| Farbe | Zustand | Bedeutung |
+| :---: | :--- | :--- |
+| 🟢 **Grün** (`#2e7d32`) | `IDLE` | Bereit — wartet auf Hotkey oder Klick. |
+| 🔴 **Rot** (`#c62828`) | `RECORDING` | Aufnahme läuft. |
+| 🟠 **Orange** (`#ef6c00`) | `TRANSCRIBING` / `LLM_REWRITING` | Transkription bzw. LLM-Umschreibung läuft. |
+| ⚪ **Grau** (`#757575`) | `ERROR` | Letzter Vorgang ist fehlgeschlagen. |
+
+> [!NOTE]
+> Steht im Desktop-Environment kein Tray-Bereich zur Verfügung, fällt das Icon auf das System-Theme `audio-input-microphone` zurück; die Farbkodierung greift dann ggf. nicht.
+
+---
+
 ## Hauptfenster (grafischer Fallback)
 
 Falls der globale Hotkey nicht greift (z. B. KDE-Shortcut-Konflikt) oder keine Tastatur zur Hand ist, bietet Blitztext ein **klickbares Hauptfenster**:
