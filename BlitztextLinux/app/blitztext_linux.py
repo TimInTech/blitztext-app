@@ -384,15 +384,15 @@ class BlitztextApp(QObject):
         self.action_local.triggered.connect(lambda: self._trigger_menu_workflow(WorkflowType.LOCAL))
         self.menu.addAction(self.action_local)
 
-        self.action_improver = QAction("✨  Blitztext+\tMeta+T", self)
+        self.action_improver = QAction("✨  Blitztext+\tMeta+Shift+T", self)
         self.action_improver.triggered.connect(lambda: self._trigger_menu_workflow(WorkflowType.TEXT_IMPROVER))
         self.menu.addAction(self.action_improver)
 
-        self.action_dampf = QAction("🔥  Blitztext $%&!\tMeta+D", self)
+        self.action_dampf = QAction("🔥  Blitztext $%&!\tMeta+Shift+D", self)
         self.action_dampf.triggered.connect(lambda: self._trigger_menu_workflow(WorkflowType.DAMPF_ABLASSEN))
         self.menu.addAction(self.action_dampf)
 
-        self.action_emoji = QAction("😊  Blitztext :)\tMeta+E", self)
+        self.action_emoji = QAction("😊  Blitztext :)\tMeta+Shift+E", self)
         self.action_emoji.triggered.connect(lambda: self._trigger_menu_workflow(WorkflowType.EMOJI_TEXT))
         self.menu.addAction(self.action_emoji)
 

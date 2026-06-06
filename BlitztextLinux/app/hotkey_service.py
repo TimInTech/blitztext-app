@@ -23,9 +23,9 @@ _HOTKEY_MAP = [
     # (workflow, trigger_key, required_modifiers)
     (WorkflowType.TRANSCRIPTION,  "KEY_H", {"KEY_LEFTMETA", "KEY_RIGHTMETA"}),
     (WorkflowType.LOCAL,          "KEY_H", {"KEY_LEFTMETA", "KEY_RIGHTMETA", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT"}),
-    (WorkflowType.TEXT_IMPROVER,  "KEY_T", {"KEY_LEFTMETA", "KEY_RIGHTMETA"}),
-    (WorkflowType.DAMPF_ABLASSEN, "KEY_D", {"KEY_LEFTMETA", "KEY_RIGHTMETA"}),
-    (WorkflowType.EMOJI_TEXT,     "KEY_E", {"KEY_LEFTMETA", "KEY_RIGHTMETA"}),
+    (WorkflowType.TEXT_IMPROVER,  "KEY_T", {"KEY_LEFTMETA", "KEY_RIGHTMETA", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT"}),
+    (WorkflowType.DAMPF_ABLASSEN, "KEY_D", {"KEY_LEFTMETA", "KEY_RIGHTMETA", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT"}),
+    (WorkflowType.EMOJI_TEXT,     "KEY_E", {"KEY_LEFTMETA", "KEY_RIGHTMETA", "KEY_LEFTSHIFT", "KEY_RIGHTSHIFT"}),
 ]
 
 

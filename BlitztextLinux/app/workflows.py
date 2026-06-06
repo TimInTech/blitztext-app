@@ -24,19 +24,19 @@ WORKFLOW_META: Dict[WorkflowType, Dict[str, Any]] = {
     },
     WorkflowType.TEXT_IMPROVER: {
         "display_name": "✨  Blitztext+",
-        "hotkey": "Meta+T",
+        "hotkey": "Meta+Shift+T",
         "needs_llm": True,
         "description": "Text verbessern und formatieren",
     },
     WorkflowType.DAMPF_ABLASSEN: {
         "display_name": "🔥  Blitztext $%&!",
-        "hotkey": "Meta+D",
+        "hotkey": "Meta+Shift+D",
         "needs_llm": True,
         "description": "Frustrierte Sprache in professionelle Nachricht umwandeln",
     },
     WorkflowType.EMOJI_TEXT: {
         "display_name": "😊  Blitztext :)",
-        "hotkey": "Meta+E",
+        "hotkey": "Meta+Shift+E",
         "needs_llm": True,
         "description": "Passende Emojis in Text einfügen",
     },

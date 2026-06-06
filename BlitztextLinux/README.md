@@ -75,9 +75,9 @@ Blitztext Linux registriert globale Hotkeys über die Linux-Input-Subsysteme (`e
 | :--- | :--- | :--- | :--- |
 | **🎙 Blitztext** | `Meta+H` | Nein | Zeichnet Sprache auf, transkribiert sie lokal oder online und fügt sie direkt ein. |
 | **🔒 Blitztext Lokal** | `Meta+Shift+H` | Nein | Erzwingt eine rein lokale Transkription ohne Internet-Verbindung. |
-| **✨ Blitztext+** | `Meta+T` | Ja | Transkribiert die Aufnahme und formuliert sie mittels GPT-4o-mini um. |
-| **🔥 Blitztext $%&!** | `Meta+D` | Ja | Wandelt emotionale oder frustrierte Sprache in eine sachliche Nachricht um. |
-| **😊 Blitztext :)** | `Meta+E` | Ja | Ergänzt den transkribierten Text mit passenden Emojis (Dichte einstellbar). |
+| **✨ Blitztext+** | `Meta+Shift+T` | Ja | Transkribiert die Aufnahme und formuliert sie mittels GPT-4o-mini um. |
+| **🔥 Blitztext $%&!** | `Meta+Shift+D` | Ja | Wandelt emotionale oder frustrierte Sprache in eine sachliche Nachricht um. |
+| **😊 Blitztext :)** | `Meta+Shift+E` | Ja | Ergänzt den transkribierten Text mit passenden Emojis (Dichte einstellbar). |
 
 > [!NOTE]
 > Die drei **LLM-Workflows** (`Blitztext+`, `Blitztext $%&!`, `Blitztext :)`) benötigen zwingend einen gültigen **OpenAI API-Key**. Ohne diesen Key sind diese Funktionen im Menü und über die Hotkeys deaktiviert bzw. führen zu einer Fehlermeldung.
