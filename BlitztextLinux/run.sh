@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 VENV_PYTHON="${SCRIPT_DIR}/.venv/bin/python"
-LOCKFILE="/tmp/blitztext_linux.pid"
+LOCKFILE="${XDG_RUNTIME_DIR:-/tmp}/blitztext_linux.pid"
 
 # --- Single-Instance-Guard ---
 if [[ -f "${LOCKFILE}" ]]; then

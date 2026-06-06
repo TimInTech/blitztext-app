@@ -83,14 +83,15 @@ class BlitztextConfig:
             return _deep_merge(DEFAULTS, {})
 
     def save(self) -> None:
-        """Speichert Config als JSON. Setzt Berechtigungen auf 0o600."""
+        """Speichert Config als JSON mit Berechtigungen 0o600 ab erstem Schreibvorgang."""
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
             tmp = self.config_file.with_suffix(".json.tmp")
-            tmp.write_text(
-                json.dumps(self._data, indent=2, ensure_ascii=False) + "\n",
-                encoding="utf-8",
-            )
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            fd = os.open(str(tmp), flags, 0o600)
+            with open(fd, "w", encoding="utf-8") as f:
+                json.dump(self._data, f, indent=2, ensure_ascii=False)
+                f.write("\n")
             tmp.replace(self.config_file)
             self.config_file.chmod(0o600)
         except OSError as exc:

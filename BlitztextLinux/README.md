@@ -246,6 +246,16 @@ systemctl --user disable blitztext-linux
 
 ---
 
+## Sicherheitshinweis: evdev und input-Gruppe
+
+BlitztextLinux liest globale Tastenkürzel direkt über `/dev/input/event*` via `evdev`. Dazu wird der Benutzer der Gruppe `input` hinzugefügt (`sudo usermod -aG input $USER`).
+
+**Sicherheitsabwägung:** Alle Prozesse des Benutzers (eigene Skripte, Browser-Plugins, andere Apps) können damit systemweit Tastatureingaben mitlesen. Dies ist ein bekanntes Trade-off unter Wayland, da kein standardisiertes Portal für globale Hotkeys existiert. Nutze BlitztextLinux nur auf Systemen, denen du vollständig vertraust, und installiere keine unbekannten Programme im selben Benutzerkonto.
+
+**Langfristige Alternative:** XDG GlobalShortcuts Portal (D-Bus) — wird noch nicht flächendeckend von allen Compositors unterstützt.
+
+---
+
 ## Entwickler-Hinweis (AI-Assisted Development)
 
 Dieses Projekt wurde mit Unterstützung künstlicher Intelligenz (AI-assisted) entworfen. Die Planung, Architektur-Entscheidungen sowie der Entwurf einzelner Komponenten wurden KI-gestützt erarbeitet. Der gesamte Code wurde anschließend manuell gesichtet, auf Funktion und Sicherheit geprüft und die vollständige Test-Suite lokal verifiziert.
