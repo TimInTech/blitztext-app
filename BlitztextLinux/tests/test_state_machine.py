@@ -221,3 +221,51 @@ class TestStateMachine:
             gui_app._on_workflow_triggered(WorkflowType.TRANSCRIPTION)
             start_mock.assert_called_once()
         assert gui_app.state == "RECORDING"
+
+
+@gui_only
+class TestMainWindowControl:
+    def test_gui_toggle_starts_and_stops(self, gui_app):
+        """Maus-Klick startet im IDLE eine Aufnahme und stoppt sie im RECORDING,
+        unabhaengig vom Hotkey-Modus."""
+        with patch.object(gui_app.audio_recorder, "start") as start_mock:
+            gui_app.gui_toggle_recording(WorkflowType.TRANSCRIPTION)
+            start_mock.assert_called_once()
+        assert gui_app.state == "RECORDING"
+
+        from pathlib import Path
+        with patch.object(gui_app.audio_recorder, "stop", return_value=Path("/tmp/x.wav")):
+            gui_app.gui_toggle_recording(WorkflowType.TRANSCRIPTION)
+        assert gui_app.state == "TRANSCRIBING"
+
+    def test_gui_toggle_ignored_while_busy(self, gui_app):
+        gui_app.state = "TRANSCRIBING"
+        with patch.object(gui_app.audio_recorder, "start") as start_mock:
+            gui_app.gui_toggle_recording(WorkflowType.TRANSCRIPTION)
+            start_mock.assert_not_called()
+        assert gui_app.state == "TRANSCRIBING"
+
+    def test_gui_discard_returns_to_idle(self, gui_app):
+        with patch.object(gui_app.audio_recorder, "start"):
+            gui_app.gui_toggle_recording(WorkflowType.TRANSCRIPTION)
+        assert gui_app.state == "RECORDING"
+        with patch.object(gui_app.audio_recorder, "discard") as discard_mock:
+            gui_app.gui_discard()
+            discard_mock.assert_called_once()
+        assert gui_app.state == "IDLE"
+
+    def test_main_window_reflects_state(self, gui_app):
+        win = gui_app._ensure_main_window()
+        gui_app._set_state("RECORDING", "test")
+        assert win._btn_toggle.text() == "Stopp"
+        gui_app._set_state("IDLE", "test")
+        assert win._btn_toggle.text() == "Start"
+
+    def test_dictation_mode_syncs_window_and_tray(self, gui_app):
+        win = gui_app._ensure_main_window()
+        gui_app.set_dictation_mode(True)
+        assert gui_app._dictation_mode is True
+        assert gui_app.action_dictation.isChecked() is True
+        assert win._btn_dictation.isChecked() is True
+        gui_app.set_dictation_mode(False)
+        assert win._btn_dictation.isChecked() is False

@@ -11,6 +11,19 @@ Kurzkontext:
 - Fokus der letzten Arbeit: evdev-Hotkey-Zuverlaessigkeit fuer `KEY_LEFTALT`, Debug-Logging, Tray-State-Feedback und Shutdown-Crash beim Beenden waehrend `TRANSCRIBING`.
 - Letzte Verifikation: `.venv/bin/python -m pytest tests/ -v` mit `91 passed, 4 skipped` (GUI-Tests via `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen`).
 
+## Changelog v0.2.22
+
+- feat: Grafisches Hauptfenster (`app/main_window.py`) als Fallback zum globalen
+  Hotkey — Start/Stopp per Maus, Workflow-Auswahl (alle 5), Verwerfen, plus
+  Diktat/Verlauf/Vorlesen/Einstellungen. Start/Stopp funktioniert unabhängig vom
+  Hotkey-Modus (`BlitztextApp.gui_toggle_recording`/`gui_discard`).
+- feat: Tray-Eintrag „🪟 Fenster anzeigen" und Einfach-/Doppelklick auf das
+  Tray-Icon öffnen das Fenster. Fenster wird beim Start angezeigt; Schließen
+  versteckt es nur (App läuft im Tray weiter).
+- Diktat-Modus ist zwischen Tray-Action und Fenster-Button synchronisiert
+  (`set_dictation_mode`); Verlaufs-Zähler im Fenster-Badge.
+- tests: GUI-gated `TestMainWindowControl` in `tests/test_state_machine.py`.
+
 ## Changelog v0.2.21
 
 Portierte Features aus whisper-dictation (an die Tray-only-Architektur angepasst):

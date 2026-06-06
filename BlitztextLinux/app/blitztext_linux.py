@@ -35,6 +35,7 @@ from app.transcribe import transcribe, TranscribeError
 from app.paste_service import PasteService, PasteServiceError
 from app.history_panel import HistoryPanel
 from app.tts_window import TtsWindow
+from app.main_window import MainWindow
 from app import notify as notify_service
 
 # Set up module logger
@@ -393,6 +394,7 @@ class BlitztextApp(QObject):
         self._dictation_mode = False
         self._history_panel: Optional[HistoryPanel] = None
         self._tts_window: Optional[TtsWindow] = None
+        self._main_window: Optional[MainWindow] = None
 
         # Tray setup
         self.setup_tray()
@@ -421,8 +423,17 @@ class BlitztextApp(QObject):
         self.tray_icon.setIcon(icon)
         self.tray_icon.setToolTip("Blitztext")
 
+        # Show window via single/double click on the tray icon
+        self.tray_icon.activated.connect(self._on_tray_activated)
+
         # Create menu
         self.menu = QMenu()
+
+        # Fenster anzeigen (grafischer Fallback)
+        self.action_show_window = QAction("🪟  Fenster anzeigen", self)
+        self.action_show_window.triggered.connect(self.show_main_window)
+        self.menu.addAction(self.action_show_window)
+        self.menu.addSeparator()
 
         # Actions for workflows matching handover specs
         self.action_transcription = QAction("🎙  Blitztext\tMeta+H", self)
@@ -562,15 +573,7 @@ class BlitztextApp(QObject):
         logger.info("Workflow triggered: %s (current state: %s)", workflow, self.state)
 
         if self.state == "IDLE":
-            try:
-                self.audio_recorder.start(device=self.config.audio_device)
-                self.current_workflow = workflow
-                self._set_state("RECORDING", f"workflow {workflow.value} started")
-            except AudioRecorderError as e:
-                logger.error("Failed to start recording: %s", e)
-                self.show_tray_error("Aufnahme-Fehler", f"Aufnahme konnte nicht gestartet werden: {e}")
-                self.current_workflow = None
-                self._set_state("IDLE", "recording start failed")
+            self._start_recording(workflow)
 
         elif self.state == "RECORDING":
             if self.config.hotkey_mode == "toggle":
@@ -587,6 +590,36 @@ class BlitztextApp(QObject):
 
         else:
             logger.info("Ignored hotkey trigger %s while busy", workflow)
+
+    def _start_recording(self, workflow: WorkflowType) -> None:
+        try:
+            self.audio_recorder.start(device=self.config.audio_device)
+            self.current_workflow = workflow
+            self._set_state("RECORDING", f"workflow {workflow.value} started")
+        except AudioRecorderError as e:
+            logger.error("Failed to start recording: %s", e)
+            self.show_tray_error("Aufnahme-Fehler", f"Aufnahme konnte nicht gestartet werden: {e}")
+            self.current_workflow = None
+            self._set_state("IDLE", "recording start failed")
+
+    def gui_toggle_recording(self, workflow: WorkflowType) -> None:
+        """Start/Stopp per Maus-Klick — unabhaengig vom Hotkey-Modus.
+
+        Fallback wenn der Hotkey nicht greift oder keine Tastatur zur Hand ist.
+        """
+        if self.state == "IDLE":
+            self._start_recording(workflow)
+        elif self.state == "RECORDING":
+            self._stop_recording_and_process()
+        else:
+            logger.info("GUI-Toggle ignoriert (State=%s, busy)", self.state)
+
+    def gui_discard(self) -> None:
+        """Laufende Aufnahme verwerfen, ohne zu transkribieren."""
+        if self.state == "RECORDING":
+            self.audio_recorder.discard()
+            self.current_workflow = None
+            self._set_state("IDLE", "discarded via gui")
 
     @pyqtSlot()
     def _on_recording_stop(self) -> None:
@@ -680,6 +713,7 @@ class BlitztextApp(QObject):
             panel.setWindowTitle("Blitztext – Verlauf")
             panel.resize(320, 440)
             panel.merged.connect(self._on_dictation_merged)
+            panel.count_changed.connect(self._on_history_count_changed)
             self._history_panel = panel
         else:
             # Konfiguration aktuell halten
@@ -700,8 +734,22 @@ class BlitztextApp(QObject):
         panel.activateWindow()
 
     def _on_dictation_toggled(self, enabled: bool) -> None:
+        self.set_dictation_mode(enabled)
+
+    def set_dictation_mode(self, enabled: bool) -> None:
+        """Zentrale Umschaltung — haelt Tray-Action und Hauptfenster synchron."""
+        if self._dictation_mode == enabled:
+            return
         self._dictation_mode = enabled
         logger.info("Diktat-Modus %s", "aktiviert" if enabled else "deaktiviert")
+
+        # UI synchron halten, ohne Signale erneut auszuloesen
+        self.action_dictation.blockSignals(True)
+        self.action_dictation.setChecked(enabled)
+        self.action_dictation.blockSignals(False)
+        if self._main_window is not None:
+            self._main_window.set_dictation_checked(enabled)
+
         if enabled:
             self._ensure_history_panel()
             self.show_history_panel()
@@ -724,6 +772,38 @@ class BlitztextApp(QObject):
     def _on_tts_closed(self, _result: int) -> None:
         self._tts_window = None
 
+    def _on_history_count_changed(self, count: int) -> None:
+        if self._main_window is not None:
+            self._main_window.set_history_count(count)
+
+    # ------------------------------------------------------------------
+    # Hauptfenster
+    # ------------------------------------------------------------------
+
+    def _ensure_main_window(self) -> MainWindow:
+        if self._main_window is None:
+            window = MainWindow(self)
+            window.set_dictation_checked(self._dictation_mode)
+            if self._history_panel is not None:
+                window.set_history_count(self._history_panel.entry_count)
+            window.update_state(self.state, self.current_workflow, self._tray_error_message)
+            self._main_window = window
+        return self._main_window
+
+    def show_main_window(self) -> None:
+        window = self._ensure_main_window()
+        window.show()
+        window.raise_()
+        window.activateWindow()
+
+    @pyqtSlot(QSystemTrayIcon.ActivationReason)
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            self.show_main_window()
+
     @pyqtSlot(object)
     def _on_worker_finished(self, worker: object) -> None:
         try:
@@ -744,6 +824,8 @@ class BlitztextApp(QObject):
 
     def _on_state_changed(self) -> None:
         self.update_tray_state()
+        if self._main_window is not None:
+            self._main_window.update_state(self.state, self.current_workflow, self._tray_error_message)
 
     def update_tray_state(self) -> None:
         if self._tray_error_message:
@@ -786,6 +868,9 @@ class BlitztextApp(QObject):
         if self._history_panel is not None:
             self._history_panel.close()
             self._history_panel = None
+        if self._main_window is not None:
+            self._main_window.hide()
+            self._main_window = None
         self.tray_icon.hide()
         self.app.quit()
 
@@ -816,6 +901,7 @@ def main() -> int:
     app.setQuitOnLastWindowClosed(False)
 
     blitztext = BlitztextApp(app)
+    blitztext.show_main_window()
 
     exit_code = app.exec()
 

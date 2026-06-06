@@ -84,9 +84,22 @@ Blitztext Linux registriert globale Hotkeys über die Linux-Input-Subsysteme (`e
 
 ---
 
+## Hauptfenster (grafischer Fallback)
+
+Falls der globale Hotkey nicht greift (z. B. KDE-Shortcut-Konflikt) oder keine Tastatur zur Hand ist, bietet Blitztext ein **klickbares Hauptfenster**:
+
+- **Start/Stopp-Button** — startet bzw. stoppt die Aufnahme per Maus (funktioniert unabhängig vom Hotkey-Modus `toggle`/`hold`).
+- **Workflow-Auswahl** — alle fünf Workflows per Dropdown wählbar.
+- **Verwerfen** — laufende Aufnahme abbrechen, ohne zu transkribieren.
+- Schnellzugriff auf **Diktat**, **Verlauf**, **Vorlesen** und **Einstellungen**.
+
+Das Fenster öffnet sich beim Start sowie über den Tray-Eintrag **🪟 Fenster anzeigen** oder einen Klick auf das Tray-Icon. Schließen versteckt das Fenster nur — die App läuft im Tray weiter.
+
+---
+
 ## Diktat, Verlauf und Vorlesen
 
-Zusätzlich zu den Workflows bietet das Tray-Menü drei Komfort-Funktionen:
+Zusätzlich zu den Workflows bietet das Tray-Menü (und das Hauptfenster) drei Komfort-Funktionen:
 
 | Menüpunkt | Beschreibung |
 | :--- | :--- |
