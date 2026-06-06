@@ -82,13 +82,18 @@ class PasteService:
             raise PasteServiceError(
                 "wl-copy nicht gefunden. Bitte installieren: sudo apt install wl-clipboard"
             )
+        # WICHTIG: wl-copy forkt einen Hintergrund-Daemon, der die Auswahl
+        # "besitzt". Dieser Kindprozess erbt offene Pipes -- mit stderr=PIPE
+        # wartet subprocess.run() auf EOF und blockiert, bis der Clipboard-Daemon
+        # stirbt (faelschlicherweise als Timeout sichtbar). Deshalb stderr nach
+        # DEVNULL leiten, damit der Parent sofort zurueckkehrt.
         try:
             subprocess.run(
                 ["wl-copy"],
                 input=text.encode("utf-8"),
                 check=True,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
                 timeout=_WL_COPY_TIMEOUT,
             )
             logger.debug("wl-copy: %d Zeichen ins Clipboard geschrieben.", len(text))
@@ -97,8 +102,7 @@ class PasteService:
                 f"wl-copy reagierte nicht innerhalb von {_WL_COPY_TIMEOUT:.0f}s"
             ) from exc
         except subprocess.CalledProcessError as exc:
-            stderr = exc.stderr.decode(errors="replace").strip() if exc.stderr else ""
-            raise PasteServiceError(f"wl-copy fehlgeschlagen: {stderr}") from exc
+            raise PasteServiceError(f"wl-copy fehlgeschlagen (rc={exc.returncode})") from exc
 
     def _ydotool_paste(self) -> None:
         if shutil.which("ydotool") is None:
