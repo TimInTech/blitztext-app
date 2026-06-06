@@ -18,6 +18,7 @@ DEFAULTS: dict[str, Any] = {
     "language": "de",
     "backend": "openai-whisper",
     "hotkey_mode": "hold",
+    "transcription_hotkey": "KEY_LEFTALT",
     "openai_api_key": "",
     "autopaste": True,
     "audio_device": "@DEFAULT_SOURCE@",
@@ -33,6 +34,11 @@ VALID_BACKENDS = {"openai-whisper", "faster-whisper"}
 VALID_HOTKEY_MODES = {"toggle", "hold"}
 VALID_TONES = {"formal", "neutral", "locker"}
 VALID_EMOJI_DENSITIES = {"wenig", "mittel", "viel"}
+VALID_HOTKEY_KEYS = {
+    "KEY_LEFTALT", "KEY_RIGHTALT", "KEY_RIGHTCTRL", "KEY_LEFTCTRL",
+    "KEY_F13", "KEY_F14", "KEY_F15", "KEY_F16",
+    "KEY_SCROLLLOCK", "KEY_PAUSE", "KEY_INSERT", "KEY_CAPSLOCK",
+}
 
 
 class ConfigError(Exception):
@@ -137,6 +143,16 @@ class BlitztextConfig:
         self._data["hotkey_mode"] = value
 
     @property
+    def transcription_hotkey(self) -> str:
+        return self._data.get("transcription_hotkey", "KEY_LEFTALT")
+
+    @transcription_hotkey.setter
+    def transcription_hotkey(self, value: str) -> None:
+        if value not in VALID_HOTKEY_KEYS:
+            raise ValueError(f"Ungueltige Hotkey-Taste: {value!r}. Gueltig: {sorted(VALID_HOTKEY_KEYS)}")
+        self._data["transcription_hotkey"] = value
+
+    @property
     def openai_api_key(self) -> str:
         return self._data["openai_api_key"]
 
@@ -204,6 +220,8 @@ class BlitztextConfig:
             self._data["backend"] = "openai-whisper"
         if self._data.get("hotkey_mode") not in VALID_HOTKEY_MODES:
             self._data["hotkey_mode"] = "toggle"
+        if self._data.get("transcription_hotkey") not in VALID_HOTKEY_KEYS:
+            self._data["transcription_hotkey"] = "KEY_LEFTALT"
         
         # Ensure workflows dict exists
         if "workflows" not in self._data or not isinstance(self._data["workflows"], dict):
