@@ -11,6 +11,23 @@ Kurzkontext:
 - Fokus der letzten Arbeit: evdev-Hotkey-Zuverlaessigkeit fuer `KEY_LEFTALT`, Debug-Logging, Tray-State-Feedback und Shutdown-Crash beim Beenden waehrend `TRANSCRIBING`.
 - Letzte Verifikation: `.venv/bin/python -m pytest tests/ -v` mit `91 passed, 4 skipped` (GUI-Tests via `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen`).
 
+## Changelog v0.2.21
+
+Portierte Features aus whisper-dictation (an die Tray-only-Architektur angepasst):
+
+- feat: Diktat-Modus (Tray-Toggle) — sammelt Transkripte als Diktat-Einträge und
+  speichert sie einzeln als `.md` in einen Notizordner (`app/history_panel.py`,
+  `save_dictation_note`, nur innerhalb von `~`, `0o600`).
+- feat: Verlauf-Fenster — letzte Transkripte mit Kopieren/Löschen je Eintrag und
+  „Zusammenführen" (kombiniert Diktat-Einträge in eine `.md`-Datei + Clipboard).
+- feat: Vorlesen (TTS) via Piper (`app/tts_window.py`) — optionale Abhängigkeit,
+  Stimmen-/Tempo-Wahl, Pause/Fortsetzen; deaktiviert sich sauber ohne Piper.
+- feat: Desktop-Notifications via `notify-send` (`app/notify.py`).
+- config: neue Felder `notes_folder`, `history_size`, `tts_voice`, `tts_speed`
+  inkl. Validierung; Settings-Dialog (Tab „Allgemein") für Notizordner +
+  Verlaufsgröße.
+- tests: `tests/test_features.py` (19 GUI-freie Tests). Suite: 110 passed, 4 skipped.
+
 ## Changelog v0.2.20
 
 - fix: Left-Alt Hotkey haengt nach erstem Zyklus — Root Cause war ein

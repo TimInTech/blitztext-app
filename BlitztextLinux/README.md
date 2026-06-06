@@ -84,6 +84,29 @@ Blitztext Linux registriert globale Hotkeys über die Linux-Input-Subsysteme (`e
 
 ---
 
+## Diktat, Verlauf und Vorlesen
+
+Zusätzlich zu den Workflows bietet das Tray-Menü drei Komfort-Funktionen:
+
+| Menüpunkt | Beschreibung |
+| :--- | :--- |
+| **🎤 Diktat-Modus** | Umschalter. Ist er aktiv, werden alle Transkripte als Diktat-Einträge gesammelt und (sofern ein gültiger Notizordner gesetzt ist) einzeln als Markdown-Datei gespeichert. Im Verlauf erscheint dann eine Schaltfläche **Zusammenführen**, die alle Diktat-Einträge chronologisch in eine Textdatei kombiniert und in die Zwischenablage kopiert. |
+| **📋 Verlauf…** | Öffnet ein Fenster mit den letzten Transkripten (Anzahl konfigurierbar). Pro Eintrag: in Zwischenablage kopieren oder löschen. |
+| **🔊 Vorlesen…** | Liest beliebigen Text per **Piper TTS** vor (Stimmen- und Tempo-Auswahl, Pause/Fortsetzen). |
+
+> [!NOTE]
+> **Diktat-Notizen** werden ausschließlich in einen Ordner **innerhalb des Home-Verzeichnisses** geschrieben (Schutz gegen Pfad-Ausbruch), mit Berechtigungen `0o600`. Ordner und maximale Verlaufsgröße sind unter **Einstellungen → Allgemein** konfigurierbar.
+
+> [!IMPORTANT]
+> **Vorlesen** benötigt die optionale Abhängigkeit **Piper TTS** sowie Stimm-Modelle:
+> ```bash
+> .venv/bin/pip install piper-tts
+> # Stimmen (.onnx + .onnx.json) nach ~/.local/share/piper-voices/ legen
+> ```
+> Fehlt Piper oder eine Stimme, zeigt das Vorlese-Fenster einen Installationshinweis; alle übrigen Funktionen bleiben nutzbar. Optionale Desktop-Benachrichtigungen nutzen `notify-send` (Paket `libnotify-bin`).
+
+---
+
 ## Konfiguration
 
 ### Konfigurationspfad

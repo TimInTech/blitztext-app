@@ -33,6 +33,9 @@ from app.hotkey_service import HotkeyWorker
 from app.audio_recorder import AudioRecorder, AudioRecorderError
 from app.transcribe import transcribe, TranscribeError
 from app.paste_service import PasteService, PasteServiceError
+from app.history_panel import HistoryPanel
+from app.tts_window import TtsWindow
+from app import notify as notify_service
 
 # Set up module logger
 logger = logging.getLogger("blitztext.main")
@@ -227,6 +230,18 @@ class SettingsDialog(QDialog):
         form_general.addRow(self.check_autopaste)
         form_general.addRow("", create_help_label("Simuliert Strg+V nach Abschluss der Aufnahme. Benötigt das Tool 'ydotool'."))
 
+        self.edit_notes_folder = QLineEdit()
+        self.edit_notes_folder.setText(self.config.notes_folder)
+        self.edit_notes_folder.setPlaceholderText(str(Path.home() / "Blitztext-Notizen"))
+        form_general.addRow("Diktat-Notizordner:", self.edit_notes_folder)
+        form_general.addRow("", create_help_label("Ordner für Diktat-Notizen (muss innerhalb von ~ liegen). Leer = Speichern deaktiviert."))
+
+        self.spin_history_size = QComboBox()
+        self.spin_history_size.addItems(["10", "25", "50", "75", "100"])
+        self.spin_history_size.setCurrentText(str(self.config.history_size))
+        form_general.addRow("Verlauf-Größe:", self.spin_history_size)
+        form_general.addRow("", create_help_label("Maximale Anzahl der im Verlauf gespeicherten Einträge."))
+
         self.tabs.addTab(tab_general, "Allgemein")
 
         layout.addWidget(self.tabs)
@@ -260,6 +275,8 @@ class SettingsDialog(QDialog):
             self.config.dampf_system_prompt = self.edit_dampf_prompt.toPlainText().strip()
 
             self.config.autopaste = self.check_autopaste.isChecked()
+            self.config.notes_folder = self.edit_notes_folder.text().strip()
+            self.config.history_size = int(self.spin_history_size.currentText())
 
             self.config.save()
             self.accept()
@@ -372,6 +389,11 @@ class BlitztextApp(QObject):
         self._tray_error_message: Optional[str] = None
         self._active_workers: list[_TranscribeWorker] = []
 
+        # Diktat-/Verlauf-/TTS-Zustand
+        self._dictation_mode = False
+        self._history_panel: Optional[HistoryPanel] = None
+        self._tts_window: Optional[TtsWindow] = None
+
         # Tray setup
         self.setup_tray()
 
@@ -422,6 +444,24 @@ class BlitztextApp(QObject):
         self.action_emoji = QAction("😊  Blitztext :)\tMeta+Shift+E", self)
         self.action_emoji.triggered.connect(lambda: self._trigger_menu_workflow(WorkflowType.EMOJI_TEXT))
         self.menu.addAction(self.action_emoji)
+
+        self.menu.addSeparator()
+
+        # Diktat-Modus (Toggle): sammelt Transkripte als Notizen
+        self.action_dictation = QAction("🎤  Diktat-Modus", self)
+        self.action_dictation.setCheckable(True)
+        self.action_dictation.toggled.connect(self._on_dictation_toggled)
+        self.menu.addAction(self.action_dictation)
+
+        # Verlauf anzeigen
+        self.action_history = QAction("📋  Verlauf…", self)
+        self.action_history.triggered.connect(self.show_history_panel)
+        self.menu.addAction(self.action_history)
+
+        # Vorlesen (TTS)
+        self.action_tts = QAction("🔊  Vorlesen…", self)
+        self.action_tts.triggered.connect(self.show_tts_window)
+        self.menu.addAction(self.action_tts)
 
         self.menu.addSeparator()
 
@@ -610,6 +650,12 @@ class BlitztextApp(QObject):
     @pyqtSlot(str)
     def _on_worker_result(self, result_text: str) -> None:
         logger.info("Transcription/Rewrite success. Result length: %d chars", len(result_text))
+        self._add_to_history(result_text, is_dictation=self._dictation_mode)
+        if self._dictation_mode:
+            notify_service.notify(
+                "Blitztext Diktat",
+                "Eintrag gespeichert ({} Wörter).".format(len(result_text.split())),
+            )
         self.current_workflow = None
         self._set_state("IDLE", "worker result")
 
@@ -617,8 +663,66 @@ class BlitztextApp(QObject):
     def _on_worker_error(self, err_msg: str) -> None:
         logger.error("Worker error: %s", err_msg)
         self.show_tray_error("Blitztext Fehler", err_msg)
+        notify_service.notify("Blitztext Fehler", err_msg, urgency="critical")
         self.current_workflow = None
         self._set_state("IDLE", "worker error", keep_error=True)
+
+    # ------------------------------------------------------------------
+    # Diktat / Verlauf / Vorlesen
+    # ------------------------------------------------------------------
+
+    def _ensure_history_panel(self) -> HistoryPanel:
+        if self._history_panel is None:
+            panel = HistoryPanel(
+                max_entries=self.config.history_size,
+                notes_folder=self.config.notes_folder,
+            )
+            panel.setWindowTitle("Blitztext – Verlauf")
+            panel.resize(320, 440)
+            panel.merged.connect(self._on_dictation_merged)
+            self._history_panel = panel
+        else:
+            # Konfiguration aktuell halten
+            self._history_panel.notes_folder = self.config.notes_folder
+            self._history_panel.set_max_entries(self.config.history_size)
+        return self._history_panel
+
+    def _add_to_history(self, text: str, is_dictation: bool) -> None:
+        if not text or not text.strip():
+            return
+        panel = self._ensure_history_panel()
+        panel.add_entry(text, is_dictation=is_dictation)
+
+    def show_history_panel(self) -> None:
+        panel = self._ensure_history_panel()
+        panel.show()
+        panel.raise_()
+        panel.activateWindow()
+
+    def _on_dictation_toggled(self, enabled: bool) -> None:
+        self._dictation_mode = enabled
+        logger.info("Diktat-Modus %s", "aktiviert" if enabled else "deaktiviert")
+        if enabled:
+            self._ensure_history_panel()
+            self.show_history_panel()
+            notify_service.notify(
+                "Blitztext Diktat",
+                "Diktat-Modus aktiv. Aufnahmen werden als Notizen gesammelt.",
+            )
+
+    def _on_dictation_merged(self, path: str) -> None:
+        notify_service.notify("Blitztext Diktat", f"Zusammengeführt und gespeichert:\n{path}")
+
+    def show_tts_window(self) -> None:
+        if self._tts_window is None:
+            self._tts_window = TtsWindow(self.config)
+            self._tts_window.finished.connect(self._on_tts_closed)
+        self._tts_window.show()
+        self._tts_window.raise_()
+        self._tts_window.activateWindow()
+
+    def _on_tts_closed(self, _result: int) -> None:
+        self._tts_window = None
 
     @pyqtSlot(object)
     def _on_worker_finished(self, worker: object) -> None:
@@ -676,6 +780,12 @@ class BlitztextApp(QObject):
         logger.info("Quitting application...")
         self.audio_recorder.discard()
         self.stop_hotkey_worker()
+        if self._tts_window is not None:
+            self._tts_window.close()
+            self._tts_window = None
+        if self._history_panel is not None:
+            self._history_panel.close()
+            self._history_panel = None
         self.tray_icon.hide()
         self.app.quit()
 

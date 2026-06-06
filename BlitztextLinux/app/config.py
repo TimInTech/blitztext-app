@@ -22,6 +22,10 @@ DEFAULTS: dict[str, Any] = {
     "openai_api_key": "",
     "autopaste": True,
     "audio_device": "@DEFAULT_SOURCE@",
+    "notes_folder": str(Path.home() / "Blitztext-Notizen"),
+    "history_size": 50,
+    "tts_voice": "",
+    "tts_speed": 1.0,
     "workflows": {
         "text_improver_tone": "neutral",
         "emoji_density": "mittel",
@@ -178,6 +182,38 @@ class BlitztextConfig:
         self._data["audio_device"] = value
 
     @property
+    def notes_folder(self) -> str:
+        return self._data.get("notes_folder", "")
+
+    @notes_folder.setter
+    def notes_folder(self, value: str) -> None:
+        self._data["notes_folder"] = value
+
+    @property
+    def history_size(self) -> int:
+        return int(self._data.get("history_size", 50))
+
+    @history_size.setter
+    def history_size(self, value: int) -> None:
+        self._data["history_size"] = max(10, min(100, int(value)))
+
+    @property
+    def tts_voice(self) -> str:
+        return self._data.get("tts_voice", "")
+
+    @tts_voice.setter
+    def tts_voice(self, value: str) -> None:
+        self._data["tts_voice"] = value
+
+    @property
+    def tts_speed(self) -> float:
+        return float(self._data.get("tts_speed", 1.0))
+
+    @tts_speed.setter
+    def tts_speed(self, value: float) -> None:
+        self._data["tts_speed"] = max(0.5, min(2.0, float(value)))
+
+    @property
     def workflows(self) -> dict[str, Any]:
         return self._data["workflows"]
 
@@ -223,7 +259,21 @@ class BlitztextConfig:
             self._data["hotkey_mode"] = "toggle"
         if self._data.get("transcription_hotkey") not in VALID_HOTKEY_KEYS:
             self._data["transcription_hotkey"] = "KEY_LEFTALT"
-        
+
+        # History/TTS sanitize
+        try:
+            self._data["history_size"] = max(10, min(100, int(self._data.get("history_size", 50))))
+        except (TypeError, ValueError):
+            self._data["history_size"] = 50
+        try:
+            self._data["tts_speed"] = max(0.5, min(2.0, float(self._data.get("tts_speed", 1.0))))
+        except (TypeError, ValueError):
+            self._data["tts_speed"] = 1.0
+        if not isinstance(self._data.get("notes_folder", ""), str):
+            self._data["notes_folder"] = ""
+        if not isinstance(self._data.get("tts_voice", ""), str):
+            self._data["tts_voice"] = ""
+
         # Ensure workflows dict exists
         if "workflows" not in self._data or not isinstance(self._data["workflows"], dict):
             self._data["workflows"] = {}
