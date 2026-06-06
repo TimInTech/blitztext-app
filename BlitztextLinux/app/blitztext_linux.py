@@ -783,6 +783,11 @@ class BlitztextApp(QObject):
     def _ensure_main_window(self) -> MainWindow:
         if self._main_window is None:
             window = MainWindow(self)
+            try:
+                from app import theme
+                window.setWindowIcon(theme.create_app_icon())
+            except Exception:  # pragma: no cover - rein kosmetisch
+                pass
             window.set_dictation_checked(self._dictation_mode)
             if self._history_panel is not None:
                 window.set_history_count(self._history_panel.entry_count)
@@ -899,6 +904,14 @@ def main() -> int:
 
     app.setApplicationName("Blitztext")
     app.setQuitOnLastWindowClosed(False)
+
+    # Design-System: Glass-Theme + Marken-App-Icon (Mikrofon + Blitz)
+    try:
+        from app import theme
+        theme.apply_theme(app)
+        app.setWindowIcon(theme.create_app_icon())
+    except Exception as exc:  # pragma: no cover - rein kosmetisch
+        logging.warning("Theme/App-Icon konnte nicht angewendet werden: %s", exc)
 
     blitztext = BlitztextApp(app)
     blitztext.show_main_window()
