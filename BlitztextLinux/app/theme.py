@@ -31,6 +31,11 @@ BREEZE_BLUE = "#3daee9"
 
 APP_TEXT = "#f4f6f8"
 APP_TEXT_DIM = "#9ba2ab"
+APP_TEXT_FAINT = "#6e757e"
+
+# Feine Hairline-Borders statt voller Linienfarbe (dezenter Glass-Look)
+HAIRLINE = "rgba(255, 255, 255, 0.08)"
+HAIRLINE_STRONG = "rgba(255, 255, 255, 0.16)"
 
 STATE_IDLE = "#2e7d32"
 STATE_RECORDING = "#c62828"
@@ -47,7 +52,7 @@ ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 APP_QSS = f"""
 * {{
     color: {APP_TEXT};
-    font-size: 14px;
+    font-size: 12px;
 }}
 
 QWidget {{
@@ -58,53 +63,64 @@ QLabel {{
     background: transparent;
 }}
 
-/* Standard-Buttons: weiche Rundungen statt kantiger Breeze-Defaults */
+/* Standard-Buttons: kompakt, Hairline-Border, klare Zustaende */
 QPushButton {{
     background-color: {BREEZE_BUTTON};
-    border: 1px solid {BREEZE_LINE};
-    border-radius: 10px;
-    padding: 6px 12px;
+    border: 1px solid {HAIRLINE};
+    border-radius: 8px;
+    padding: 3px 8px;
     color: {APP_TEXT};
 }}
 QPushButton:hover {{
     background-color: {BREEZE_BUTTON_HOV};
+    border-color: {HAIRLINE_STRONG};
 }}
 QPushButton:pressed {{
-    background-color: #2c3035;
+    background-color: #272b2f;
+    border-color: {HAIRLINE};
+}}
+QPushButton:focus {{
+    border-color: rgba(61, 174, 233, 0.65);
+    outline: none;
 }}
 QPushButton:disabled {{
-    color: {APP_TEXT_DIM};
-    background-color: #2a2e32;
-    border-color: #383c42;
+    color: {APP_TEXT_FAINT};
+    background-color: #2d3135;
+    border-color: rgba(255, 255, 255, 0.04);
 }}
 QPushButton:checked {{
-    background-color: rgba(224, 169, 15, 0.16);
-    border-color: rgba(224, 169, 15, 0.45);
+    background-color: rgba(224, 169, 15, 0.14);
+    border-color: rgba(224, 169, 15, 0.40);
     color: {BLITZ_300};
 }}
 
 /* Eingaben & Auswahl */
 QComboBox, QLineEdit, QSpinBox, QPlainTextEdit, QTextEdit {{
     background-color: {BREEZE_VIEW};
-    border: 1px solid {BREEZE_LINE};
-    border-radius: 10px;
-    padding: 6px 10px;
+    border: 1px solid {HAIRLINE};
+    border-radius: 8px;
+    padding: 4px 8px;
     selection-background-color: {BREEZE_BLUE};
 }}
 QComboBox:hover, QLineEdit:hover {{
-    border-color: #4b515a;
+    border-color: {HAIRLINE_STRONG};
 }}
 QComboBox:focus, QLineEdit:focus, QSpinBox:focus,
 QPlainTextEdit:focus, QTextEdit:focus {{
-    border-color: {BREEZE_BLUE};
+    border-color: rgba(61, 174, 233, 0.55);
 }}
 QComboBox::drop-down {{
     border: none;
-    width: 22px;
+    width: 20px;
+}}
+QComboBox::down-arrow {{
+    image: url({(ASSETS_DIR / "chevron-down.svg").as_posix()});
+    width: 12px;
+    height: 12px;
 }}
 QComboBox QAbstractItemView {{
     background-color: {BREEZE_VIEW};
-    border: 1px solid {BREEZE_LINE};
+    border: 1px solid {HAIRLINE_STRONG};
     border-radius: 8px;
     selection-background-color: {BREEZE_BLUE};
     outline: none;
@@ -112,14 +128,14 @@ QComboBox QAbstractItemView {{
 
 /* Tabs (Einstellungen) */
 QTabWidget::pane {{
-    border: 1px solid {BREEZE_LINE};
-    border-radius: 12px;
+    border: 1px solid {HAIRLINE};
+    border-radius: 10px;
     top: -1px;
 }}
 QTabBar::tab {{
     background: transparent;
     color: {APP_TEXT_DIM};
-    padding: 7px 14px;
+    padding: 6px 12px;
     border: none;
     border-bottom: 2px solid transparent;
 }}
@@ -127,20 +143,30 @@ QTabBar::tab:selected {{
     color: {APP_TEXT};
     border-bottom: 2px solid {BLITZ_500};
 }}
+QTabBar::tab:hover:!selected {{
+    color: {APP_TEXT};
+}}
 
 QCheckBox {{
     background: transparent;
     spacing: 8px;
 }}
 
+QToolTip {{
+    background-color: {BREEZE_VIEW};
+    color: {APP_TEXT};
+    border: 1px solid {HAIRLINE_STRONG};
+    padding: 3px 6px;
+}}
+
 QScrollBar:vertical {{
     background: transparent;
-    width: 10px;
+    width: 8px;
     margin: 0;
 }}
 QScrollBar::handle:vertical {{
     background: #4b515a;
-    border-radius: 5px;
+    border-radius: 4px;
     min-height: 28px;
 }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{

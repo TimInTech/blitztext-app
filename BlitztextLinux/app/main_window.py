@@ -53,7 +53,7 @@ class RecordButton(QPushButton):
         super().__init__(parent)
         self._mode = "IDLE"  # IDLE | RECORDING | PROCESSING
         self._phase = 0.0
-        self.setFixedSize(104, 104)
+        self.setFixedSize(68, 68)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFlat(True)
 
@@ -81,24 +81,29 @@ class RecordButton(QPushButton):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         size = min(self.width(), self.height())
-        margin = 8
+        margin = 6
         d = size - 2 * margin
         rect = QRectF(margin, margin, d, d)
         cx, cy = self.width() / 2, self.height() / 2
 
         if self._mode == "RECORDING":
-            base, hi = QColor("#cc2b2b"), QColor("#ef4b4b")
+            base, hi = QColor("#c62828"), QColor("#e04545")
         elif self._mode == "PROCESSING":
-            base, hi = QColor("#262a31"), QColor("#3a4049")
+            base, hi = QColor("#262a31"), QColor("#383e46")
         else:
-            base, hi = QColor(theme.BLITZ_500), QColor("#f4c542")
+            base, hi = QColor(theme.BLITZ_500), QColor("#edbe35")
 
-        grad = QRadialGradient(cx, margin + d * 0.3, d)
+        grad = QRadialGradient(cx, margin + d * 0.32, d)
         grad.setColorAt(0.0, hi)
         grad.setColorAt(1.0, base)
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QBrush(grad))
         p.drawEllipse(rect)
+
+        # Feiner innerer Highlight-Ring statt grossflaechigem Glanz
+        p.setPen(QPen(QColor(255, 255, 255, 36), 1))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(rect.adjusted(1, 1, -1, -1))
 
         # Pulsierender Ring waehrend der Aufnahme (die eine bewusste Animation)
         if self._mode == "RECORDING":
@@ -120,29 +125,29 @@ class RecordButton(QPushButton):
         p.end()
 
     def _draw_mic(self, p: QPainter, color: QColor) -> None:
-        p.setPen(QPen(color, 3.2, Qt.PenStyle.SolidLine,
+        p.setPen(QPen(color, 2.2, Qt.PenStyle.SolidLine,
                       Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         p.setBrush(QBrush(color))
-        p.drawRoundedRect(QRectF(-7, -17, 14, 22), 7, 7)
+        p.drawRoundedRect(QRectF(-4.5, -11.5, 9, 15), 4.5, 4.5)
         p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawArc(QRectF(-12, -9, 24, 22).toRect(), 200 * 16, 140 * 16)
-        p.drawLine(0, 10, 0, 17)
-        p.drawLine(-7, 17, 7, 17)
+        p.drawArc(QRectF(-8, -6, 16, 15).toRect(), 200 * 16, 140 * 16)
+        p.drawLine(0, 7, 0, 12)
+        p.drawLine(-5, 12, 5, 12)
 
     def _draw_stop(self, p: QPainter) -> None:
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QBrush(QColor("#ffffff")))
-        p.drawRoundedRect(QRectF(-13, -13, 26, 26), 8, 8)
+        p.drawRoundedRect(QRectF(-8.5, -8.5, 17, 17), 5, 5)
 
     def _draw_spinner(self, p: QPainter) -> None:
-        p.setPen(QPen(QColor(255, 255, 255, 60), 4, Qt.PenStyle.SolidLine,
+        p.setPen(QPen(QColor(255, 255, 255, 60), 3, Qt.PenStyle.SolidLine,
                       Qt.PenCapStyle.RoundCap))
         p.setBrush(Qt.BrushStyle.NoBrush)
-        p.drawEllipse(QRectF(-18, -18, 36, 36))
-        p.setPen(QPen(QColor("#ffffff"), 4, Qt.PenStyle.SolidLine,
+        p.drawEllipse(QRectF(-12, -12, 24, 24))
+        p.setPen(QPen(QColor("#ffffff"), 3, Qt.PenStyle.SolidLine,
                       Qt.PenCapStyle.RoundCap))
         start = int(-self._phase * 360 * 16)
-        p.drawArc(QRectF(-18, -18, 36, 36).toRect(), start, 90 * 16)
+        p.drawArc(QRectF(-12, -12, 24, 24).toRect(), start, 90 * 16)
 
 
 class MainWindow(QWidget):
@@ -155,8 +160,8 @@ class MainWindow(QWidget):
         self._rec_start: Optional[float] = None
 
         self.setWindowTitle("Blitztext")
-        self.setFixedWidth(340)
-        self.resize(340, 392)
+        self.setFixedWidth(256)
+        self.resize(256, 232)
 
         self._timer = QTimer(self)
         self._timer.setInterval(1000)
@@ -167,12 +172,12 @@ class MainWindow(QWidget):
 
     def _setup_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 16, 18, 18)
-        layout.setSpacing(16)
+        layout.setContentsMargins(12, 10, 12, 12)
+        layout.setSpacing(8)
 
         # Workflow-Auswahl (Karten-Pill)
         self._workflow_combo = QComboBox()
-        self._workflow_combo.setMinimumHeight(44)
+        self._workflow_combo.setMinimumHeight(28)
         for wf in _WORKFLOW_ORDER:
             meta = WORKFLOW_META.get(wf, {})
             label = str(meta.get("display_name", wf.value)).strip()
@@ -188,40 +193,38 @@ class MainWindow(QWidget):
         hero_row.addStretch()
         layout.addLayout(hero_row)
 
-        # Status: Punkt + Text + Timer
+        # Statuszeile: Punkt + Text + Timer in einer kompakten Zeile
         status_row = QHBoxLayout()
-        status_row.setSpacing(7)
+        status_row.setSpacing(6)
         status_row.addStretch()
         self._rec_indicator = QLabel("●")
-        self._rec_indicator.setStyleSheet(f"color: {theme.STATE_IDLE}; font-size: 13px;")
+        self._rec_indicator.setStyleSheet(f"color: {theme.STATE_IDLE}; font-size: 10px;")
         status_row.addWidget(self._rec_indicator)
         self._status_label = QLabel("Bereit")
-        self._status_label.setStyleSheet("font-size: 14px; font-weight: 600;")
+        self._status_label.setStyleSheet("font-size: 12px; font-weight: 600;")
         status_row.addWidget(self._status_label)
+        self._timer_label = QLabel("00:00")
+        self._timer_label.setStyleSheet(
+            "font-size: 12px; font-family: monospace; font-weight: 600; "
+            f"color: {theme.APP_TEXT_FAINT};"
+        )
+        status_row.addWidget(self._timer_label)
         status_row.addStretch()
         layout.addLayout(status_row)
 
-        self._timer_label = QLabel("00:00")
-        self._timer_label.setStyleSheet(
-            "font-size: 16px; font-family: monospace; font-weight: 600; "
-            f"color: {theme.APP_TEXT_DIM};"
-        )
-        self._timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(self._timer_label)
-
         # Sekundaerzeile: Verwerfen + Diktat (Pills)
         sec_row = QHBoxLayout()
-        sec_row.setSpacing(10)
+        sec_row.setSpacing(6)
         self._btn_discard = QPushButton("↺  Verwerfen")
-        self._btn_discard.setMinimumHeight(42)
-        self._btn_discard.setStyleSheet("border-radius: 21px; font-weight: 600;")
+        self._btn_discard.setMinimumHeight(28)
+        self._btn_discard.setStyleSheet("border-radius: 14px; font-weight: 600;")
         self._btn_discard.setEnabled(False)
         self._btn_discard.clicked.connect(self._on_discard_clicked)
         sec_row.addWidget(self._btn_discard)
 
-        self._btn_dictation = QPushButton("🎤  Diktat")
-        self._btn_dictation.setMinimumHeight(42)
-        self._btn_dictation.setStyleSheet("border-radius: 21px; font-weight: 600;")
+        self._btn_dictation = QPushButton("✎  Diktat")
+        self._btn_dictation.setMinimumHeight(28)
+        self._btn_dictation.setStyleSheet("border-radius: 14px; font-weight: 600;")
         self._btn_dictation.setCheckable(True)
         self._btn_dictation.clicked.connect(self._on_dictation_clicked)
         sec_row.addWidget(self._btn_dictation)
@@ -229,23 +232,27 @@ class MainWindow(QWidget):
 
         # Unterzeile: Verlauf (mit Zaehler), Vorlesen, Einstellungen
         bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(10)
-        self._btn_history = QPushButton("📋  Verlauf (0)")
-        self._btn_history.setMinimumHeight(40)
-        self._btn_history.setStyleSheet("border-radius: 13px;")
+        bottom_row.setSpacing(6)
+        self._btn_history = QPushButton("≡  Verlauf (0)")
+        self._btn_history.setMinimumHeight(28)
+        self._btn_history.setStyleSheet(f"border-radius: 14px; color: {theme.APP_TEXT_DIM};")
         self._btn_history.clicked.connect(self._controller.show_history_panel)
         bottom_row.addWidget(self._btn_history, 1)
 
-        self._btn_tts = QPushButton("🔊")
-        self._btn_tts.setFixedSize(40, 40)
-        self._btn_tts.setStyleSheet("border-radius: 20px; font-size: 15px;")
+        self._btn_tts = QPushButton("♪")
+        self._btn_tts.setFixedSize(28, 28)
+        self._btn_tts.setStyleSheet(
+            f"border-radius: 14px; font-size: 13px; color: {theme.APP_TEXT_DIM}; padding: 0;"
+        )
         self._btn_tts.setToolTip("Vorlesen")
         self._btn_tts.clicked.connect(self._controller.show_tts_window)
         bottom_row.addWidget(self._btn_tts)
 
-        self._btn_settings = QPushButton("⚙")
-        self._btn_settings.setFixedSize(40, 40)
-        self._btn_settings.setStyleSheet("border-radius: 20px; font-size: 15px;")
+        self._btn_settings = QPushButton("⚙︎")
+        self._btn_settings.setFixedSize(28, 28)
+        self._btn_settings.setStyleSheet(
+            f"border-radius: 14px; font-size: 13px; color: {theme.APP_TEXT_DIM}; padding: 0;"
+        )
         self._btn_settings.setToolTip("Einstellungen")
         self._btn_settings.clicked.connect(self._controller.show_settings_dialog)
         bottom_row.addWidget(self._btn_settings)
@@ -292,8 +299,8 @@ class MainWindow(QWidget):
         if error:
             self._set_status("Fehler", theme.STATE_ERROR)
         elif recording:
-            wf_name = workflow.value if workflow else ""
-            self._set_status(f"Aufnahme läuft… ({wf_name})", theme.STATE_RECORDING)
+            # Der Workflow steht bereits im Dropdown darueber — kein Suffix noetig.
+            self._set_status("Aufnahme läuft…", theme.STATE_RECORDING)
         elif state == "TRANSCRIBING":
             self._set_status("Transkribiere…", theme.STATE_PROCESSING)
         elif state == "LLM_REWRITING":
@@ -307,7 +314,7 @@ class MainWindow(QWidget):
                 self._update_timer_label()
                 self._timer.start()
             self._timer_label.setStyleSheet(
-                "font-size: 16px; font-family: monospace; font-weight: 600; "
+                "font-size: 12px; font-family: monospace; font-weight: 600; "
                 f"color: {theme.APP_TEXT};"
             )
         else:
@@ -315,18 +322,23 @@ class MainWindow(QWidget):
             self._rec_start = None
             self._timer_label.setText("00:00")
             self._timer_label.setStyleSheet(
-                "font-size: 16px; font-family: monospace; font-weight: 600; "
-                f"color: {theme.APP_TEXT_DIM};"
+                "font-size: 12px; font-family: monospace; font-weight: 600; "
+                f"color: {theme.APP_TEXT_FAINT};"
             )
         _ = busy
 
     def _set_status(self, text: str, color: str) -> None:
+        # Statuspunkt traegt die Statusfarbe; der Text bleibt neutral —
+        # ruhiger als eine voll eingefaerbte „Ampel"-Zeile.
+        text_color = theme.APP_TEXT_DIM if color == theme.STATE_IDLE else theme.APP_TEXT
         self._status_label.setText(text)
-        self._status_label.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {color};")
-        self._rec_indicator.setStyleSheet(f"color: {color}; font-size: 13px;")
+        self._status_label.setStyleSheet(
+            f"font-size: 12px; font-weight: 600; color: {text_color};"
+        )
+        self._rec_indicator.setStyleSheet(f"color: {color}; font-size: 10px;")
 
     def set_history_count(self, count: int) -> None:
-        self._btn_history.setText(f"📋  Verlauf ({count})")
+        self._btn_history.setText(f"≡  Verlauf ({count})")
 
     def set_dictation_checked(self, checked: bool) -> None:
         self._btn_dictation.blockSignals(True)

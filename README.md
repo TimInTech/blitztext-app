@@ -17,11 +17,11 @@ Dieses Repository enthält zwei eigenständige Implementierungen:
 <table>
   <tr>
     <td align="center">
-      <img src="docs/screenshots/linux/main-window-glass.png" alt="Hauptfenster im Breeze-Dark/Glass-Design: Workflow-Auswahl, runder Aufnahme-Button, Status und Schnellzugriffe" width="340"><br>
+      <img src="docs/screenshots/linux/main-window-compact-glass.png" alt="Hauptfenster im Breeze-Dark/Glass-Design: Workflow-Auswahl, runder Aufnahme-Button, Status und Schnellzugriffe" width="256"><br>
       <sub><b>Hauptfenster</b> — bereit (Glass-Dark-Design)</sub>
     </td>
     <td align="center">
-      <img src="docs/screenshots/linux/main-window-glass-recording.png" alt="Hauptfenster während der Aufnahme: roter Aufnahme-Button, Statuspunkt und laufender Timer" width="340"><br>
+      <img src="docs/screenshots/linux/main-window-compact-recording.png" alt="Hauptfenster während der Aufnahme: roter Aufnahme-Button, Statuspunkt und laufender Timer" width="256"><br>
       <sub><b>Hauptfenster</b> — Aufnahme läuft</sub>
     </td>
   </tr>
