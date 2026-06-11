@@ -494,11 +494,14 @@ class BlitztextApp(QObject):
         self.tray_icon.show()
 
     def _create_microphone_icon(self, color: QColor) -> QIcon:
-        pixmap = QPixmap(64, 64)
+        # In doppelter Aufloesung zeichnen — das Panel skaliert herunter,
+        # dadurch bleibt der Glyph auch bei kleinen Tray-Groessen scharf.
+        pixmap = QPixmap(128, 128)
         pixmap.fill(Qt.GlobalColor.transparent)
 
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.scale(2, 2)
         painter.setPen(QPen(color, 5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         painter.setBrush(QBrush(color))
         painter.drawRoundedRect(23, 8, 18, 29, 9, 9)
