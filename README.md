@@ -12,10 +12,9 @@
   <p><i>Sprache per Hotkey aufnehmen, lokal oder online transkribieren, optional per LLM umschreiben und direkt in die aktive Anwendung einfügen.</i></p>
 </div>
 
----
-
 > [!IMPORTANT]
-> **Die macOS-Version** (`BlitztextMac/`) bleibt von diesem Port vollkommen unberührt. `BlitztextLinux` ist eine eigenständige, leistungsstarke Python 3/PyQt6-Implementierung optimiert für **Kubuntu/Ubuntu unter KDE Plasma mit Wayland**.
+> **Hinweis zur macOS-Version:** Der ursprüngliche Mac-Code wurde aus diesem Linux-Port komplett entfernt, da er hier nicht mehr benötigt wird. Wenn du die macOS-Version von Blitztext suchst, besuche bitte das [offizielle Haupt-Repository](https://github.com/cmagnussen/blitztext-app). 
+> `BlitztextLinux` ist eine eigenständige, leistungsstarke Python 3/PyQt6-Implementierung optimiert für **Kubuntu/Ubuntu unter KDE Plasma mit Wayland**.
 
 ---
 
@@ -314,6 +313,17 @@ BlitztextLinux/
 - **Datenschutz:** Lokale Workflows bleiben zu 100% auf deinem Rechner. OpenAI wird nur bei Bedarf für LLM-Aufgaben kontaktiert.
 - **Sicherheit (`evdev` & `input` Gruppe):** Das Tool liest Input global über `/dev/input/event*`. Auf System-Ebene bedeutet dies, dass alle Prozesse des Benutzers Eingaben mitlesen könnten (Trade-off unter Wayland ohne XDG GlobalShortcuts). Nutzen Sie Blitztext nur in Umgebungen, denen Sie vertrauen!
 - **Entwickler-Hinweis:** Dieses Projekt wurde mit Unterstützung künstlicher Intelligenz (AI-assisted) entworfen. Architektur, Code und Tests wurden manuell gesichtet und auf Funktion/Sicherheit lokal verifiziert.
+
+---
+
+## Legal / Impressum & Datenschutz (Original-Projekt)
+
+Dieses Projekt ist ein Linux-Port der macOS-Anwendung "Blitztext". Der Fairness halber und zur korrekten Attribution verweisen wir auf die rechtlichen Angaben des Original-Projekts:
+
+Das Original-Projekt ist ein experimentelles, nicht-kommerzielles Open-Source-Projekt unter der MIT-Lizenz. Die zugehörige Website ([blitztext.de](https://blitztext.de/)) wird betrieben von der Blackboat Internet GmbH:
+
+- Impressum: https://www.blackboat.com/impressum
+- Datenschutz / Privacy: https://www.blackboat.com/datenschutz
 
 ---
 
