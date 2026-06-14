@@ -29,14 +29,19 @@ Innerhalb des virtuellen Environments (`.venv`) werden benötigt:
 *   `pytest` (nur zur Testausführung)
 
 ### Whisper-Engines (pipx)
-Die Transkription läuft standardmäßig lokal auf Ihrem Rechner. Hierzu muss Whisper über `pipx` installiert werden:
+Die Transkription läuft standardmäßig lokal auf Ihrem Rechner. In der Praxis ist der einfachste Weg auf Ubuntu/Kubuntu das Installationsskript unten; es richtet `pipx` mit Python 3.11 ein und umgeht damit den Versionskonflikt, der auf neueren Ubuntu-Setups auftreten kann.
+
 *   **Pflicht**: `openai-whisper`
     ```bash
-    pipx install openai-whisper
+    pipx install --python "$(command -v python3.11)" openai-whisper
     ```
 *   **Optional**: `faster-whisper` (für beschleunigte Ausführung)
     ```bash
     pipx inject openai-whisper faster-whisper
+    ```
+*   **Empfohlen auf Ubuntu/Kubuntu**:
+    ```bash
+    bash scripts/install.sh
     ```
 
 ---
@@ -186,44 +191,68 @@ Folgende Struktur zeigt die Standardkonfiguration mit allen Default-Werten:
 
 ## Installation und Start
 
-### 1. Rechte für evdev einrichten (Wichtig!)
-Da `evdev` systemweit Tastendrücke über `/dev/input/event*` ausliest, benötigt Ihr Benutzer Lesezugriff auf diese Gerätedateien.
-1. Fügen Sie Ihren Benutzer der Gruppe `input` hinzu:
+### Schnellstart (empfohlen)
+
+```bash
+cd BlitztextLinux
+bash scripts/install.sh
+```
+
+Wichtig: Die Befehle unten gehen vom Verzeichnis `BlitztextLinux/` aus.
+
+Das Skript ist der bevorzugte Weg für Ubuntu/Kubuntu. Es:
+- prüft Ubuntu/Debian und die nötige Python-Version
+- installiert fehlende Systempakete inkl. `pipx`
+- richtet die virtuelle Umgebung `.venv` ein
+- installiert `openai-whisper` mit einem kompatiblen Python 3.11–3.13
+- verwendet den vorhandenen `ydotool.service`
+- richtet den systemd-User-Service von Blitztext ein
+
+### Danach
+
+1. Falls der Benutzer neu zur Gruppe `input` hinzugefügt wurde: **ab- und wieder anmelden** oder neu starten.
+2. Anwendung starten:
+   ```bash
+   cd BlitztextLinux
+   ./run.sh
+   ```
+   Das Skript findet die `.venv` automatisch und startet die App mit dem passenden Python.
+3. Wenn der Test läuft, Autostart aktivieren:
+   ```bash
+   systemctl --user start blitztext-linux
+   ```
+
+Erscheint das Mikrofon-Symbol im Tray und reagieren die Hotkeys korrekt, ist die Installation erfolgreich.
+
+### Manuell nur für Diagnose
+
+Wenn Sie gezielt debuggen oder die Schritte einzeln ausführen möchten:
+
+1. **evdev-Rechte**
    ```bash
    sudo usermod -aG input $USER
    ```
-2. **Wichtig**: Melden Sie sich ab und wieder an (oder starten Sie das System neu), damit die Gruppenmitgliedschaft aktiv wird.
-
-### 2. Virtuelle Umgebung aufsetzen
-Wechseln Sie in das Linux-Port-Verzeichnis und erstellen Sie das Environment:
-```bash
-cd BlitztextLinux
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r <(echo "PyQt6" && echo "evdev" && echo "openai" && echo "pytest")
-```
-
-### 3. ydotool konfigurieren (für Auto-Paste)
-Damit `ydotool` Tastenschläge ohne Root-Rechte an den Wayland-Compositor senden kann, muss der `ydotoold`-Hintergrunddienst laufen.
-Stellen Sie sicher, dass Ihr Benutzer Zugriff auf die entsprechende Socket-Datei hat, beispielsweise indem Sie `ydotoold` im Benutzerkontext starten:
-```bash
-ydotoold --socket-path=$XDG_RUNTIME_DIR/.ydotool_button &
-export YDOTOOL_SOCKET=$XDG_RUNTIME_DIR/.ydotool_button
-```
-*(Alternativ kann ydotool über Systemd-User-Services eingerichtet werden).*
-
-### 4. Anwendung starten
-Starten Sie die Anwendung aus dem aktivierten Environment heraus:
-```bash
-python app/blitztext_linux.py
-```
-Es erscheint ein Mikrofon-Symbol im System-Tray. Über das Kontextmenü (Rechtsklick) gelangen Sie in die Einstellungen, um Ihren OpenAI API-Key zu hinterlegen oder das Whisper-Modell auszuwählen.
+2. **Virtuelle Umgebung**
+   ```bash
+   cd BlitztextLinux
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -r <(echo "PyQt6" && echo "evdev" && echo "openai" && echo "pytest")
+   ```
+3. **ydotool prüfen**
+   ```bash
+   systemctl --user start ydotool.service
+   ```
+4. **Anwendung starten**
+   ```bash
+   python app/blitztext_linux.py
+   ```
 
 ---
 
 ## Test-Ausführung
 
-Um die komplette Suite aus 54 Unit- und Integrationstests auszuführen, stellen Sie sicher, dass Sie sich im Verzeichnis `BlitztextLinux` befinden und das Environment aktiv ist:
+Um die komplette Suite aus 57 Unit- und Integrationstests auszuführen, stellen Sie sicher, dass Sie sich im Verzeichnis `BlitztextLinux` befinden und das Environment aktiv ist:
 
 ```bash
 pytest
@@ -254,7 +283,7 @@ Starten Sie die Anwendung einmalig manuell, um sicherzugehen, dass alles funktio
 
 ```bash
 cd BlitztextLinux
-.venv/bin/python app/blitztext_linux.py
+./run.sh
 ```
 
 Erscheint das Mikrofon-Symbol im Tray und reagieren die Hotkeys korrekt, ist die Installation erfolgreich.
