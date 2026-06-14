@@ -28,7 +28,20 @@ VENV_DIR="${BLITZTEXT_DIR}/.venv"
 SYSTEMD_USER_DIR="${HOME}/.config/systemd/user"
 SERVICE_SRC="${BLITZTEXT_DIR}/systemd/blitztext-linux.service"
 SERVICE_DST="${SYSTEMD_USER_DIR}/blitztext-linux.service"
-YDOTOOLD_SERVICE="${SYSTEMD_USER_DIR}/ydotoold.service"
+
+ydotoold_socket_path() {
+    echo "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
+}
+
+ydotoold_is_running() {
+    local socket_path
+    socket_path="$(ydotoold_socket_path)"
+    pgrep -x ydotoold >/dev/null 2>&1 && [[ -S "${socket_path}" ]]
+}
+
+ydotool_user_service_exists() {
+    systemctl --user cat ydotool.service >/dev/null 2>&1
+}
 
 # ─── Voraussetzungen prüfen ───────────────────────────────────────────────────
 step "Voraussetzungen prüfen"
@@ -149,22 +162,26 @@ step "ydotool systemd-User-Service prüfen"
 # Auf Debian/Ubuntu wird dieses üblicherweise bereits mit dem Paket ydotool
 # mitgebracht und startet den ydotoold-Daemon ohne einen zweiten, konkurrierenden
 # User-Service anzulegen.
-if systemctl --user is-enabled --quiet ydotool.service 2>/dev/null; then
-    ok "ydotool.service bereits aktiviert."
-else
-    systemctl --user enable ydotool.service
-    done_add "ydotool.service aktiviert"
-    ok "ydotool.service aktiviert."
-fi
-
 if systemctl --user is-active --quiet ydotool.service 2>/dev/null; then
     ok "ydotool.service läuft bereits."
-elif pgrep -x ydotoold >/dev/null 2>&1 && [[ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket" ]]; then
-    ok "ydotoold läuft bereits mit Socket: ${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
-else
+elif ydotoold_is_running; then
+    ok "ydotoold läuft bereits mit Socket: $(ydotoold_socket_path)"
+elif ydotool_user_service_exists; then
+    if systemctl --user is-enabled --quiet ydotool.service 2>/dev/null; then
+        ok "ydotool.service bereits aktiviert."
+    else
+        systemctl --user enable ydotool.service
+        done_add "ydotool.service aktiviert"
+        ok "ydotool.service aktiviert."
+    fi
+
     systemctl --user start ydotool.service
     done_add "ydotool.service gestartet"
     ok "ydotool.service gestartet."
+else
+    warn "ydotool.service wurde nicht gefunden."
+    warn "Wenn ydotool aus dem Quellcode gebaut wurde, starten Sie ydotoold manuell"
+    warn "oder legen Sie einen passenden systemd-User-Service an."
 fi
 
 # ─── blitztext-linux.service einrichten ───────────────────────────────────────
