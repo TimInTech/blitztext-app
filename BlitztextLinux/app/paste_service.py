@@ -180,7 +180,9 @@ def _has_wayland_clipboard() -> bool:
         return False
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
     wayland_display = os.environ.get("WAYLAND_DISPLAY")
-    return bool(runtime_dir and wayland_display and os.path.exists(os.path.join(runtime_dir, wayland_display)))
+    if wayland_display:
+        return bool(runtime_dir and os.path.exists(os.path.join(runtime_dir, wayland_display)))
+    return not os.environ.get("DISPLAY")
 
 
 def _has_x11_clipboard() -> bool:
