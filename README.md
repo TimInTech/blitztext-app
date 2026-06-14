@@ -1,18 +1,54 @@
 # Blitztext
 
+[![BlitztextLinux CI](https://github.com/TimInTech/blitztext-app/actions/workflows/blitztext-linux-ci.yml/badge.svg)](https://github.com/TimInTech/blitztext-app/actions/workflows/blitztext-linux-ci.yml)
+[![CI (macOS)](https://github.com/TimInTech/blitztext-app/actions/workflows/ci.yml/badge.svg)](https://github.com/TimInTech/blitztext-app/actions/workflows/ci.yml)
+[![Lizenz: MIT](https://img.shields.io/badge/Lizenz-MIT-yellow.svg)](LICENSE)
+
 **Sprache zu Text per Hotkey** — aufnehmen, transkribieren, optional per LLM umschreiben und direkt in die aktive Anwendung einfügen.
 
-Dieses Repository enthält zwei eigenständige Implementierungen:
+> [!NOTE]
+> Lern- und Experimentier-Projekt: eigenen OpenAI API-Key mitbringen, kein gehostetes Backend, keine Gewährleistung.
+
+---
+
+## Zwei Implementierungen
 
 - 🐧 **[Blitztext Linux](BlitztextLinux/README.md)** — Python 3 / PyQt6, für Kubuntu/Ubuntu unter KDE Plasma mit Wayland. **Im Fokus dieses Forks.**
 - 🍎 **[Blitztext macOS](BlitztextMac/README.md)** — das ursprüngliche Swift/SwiftUI-Menubar-Projekt von [cmagnussen](https://github.com/cmagnussen/blitztext-app), unverändert übernommen.
 
-> [!NOTE]
-> Dies ist ein Lern- und Experimentier-Projekt: eigenen OpenAI API-Key mitbringen, kein gehostetes Backend, keine Gewährleistung. Die macOS-Version bleibt von der Linux-Portierung vollkommen unberührt.
+---
+
+## Schnellstart (Linux)
+
+```bash
+cd BlitztextLinux
+bash scripts/install.sh
+./run.sh
+```
+
+`scripts/install.sh` richtet venv, Systempakete, ydotool und den systemd-Autostart ein — idempotent, also beliebig oft ausführbar.
+
+Die **vollständige Anleitung** — Konfiguration, Workflows, Tests, Sicherheits- und Datenschutz-Hinweise — steht in **[BlitztextLinux/README.md](BlitztextLinux/README.md)**.
 
 ---
 
-## Screenshots (Linux)
+## Die 5 Workflows
+
+| Workflow | Hotkey | LLM | Beschreibung |
+| :--- | :--- | :---: | :--- |
+| 🎙 **Blitztext** | `Meta+H` | – | Sprache aufnehmen, transkribieren, direkt einfügen. |
+| 🔒 **Blitztext Lokal** | `Meta+Shift+H` | – | Rein lokale Transkription, ohne Internet. |
+| ✨ **Blitztext+** | `Meta+Shift+T` | ✓ | Transkript per GPT-4o-mini sauber umformulieren. |
+| 🔥 **Blitztext $%&!** | `Meta+Shift+D` | ✓ | Emotionale Sprache in eine sachliche Nachricht wandeln. |
+| 😊 **Blitztext :)** | `Meta+Shift+E` | ✓ | Passende Emojis ergänzen (Dichte einstellbar). |
+
+Dazu Komfort-Funktionen: **Diktat-Modus** (Markdown-Notizen), **Verlauf** (Kopieren/Löschen/Zusammenführen), **Vorlesen** (Piper TTS) und Desktop-**Benachrichtigungen**.
+
+---
+
+<details>
+<summary><b>📸 Screenshots (Linux)</b></summary>
+<br>
 
 <table>
   <tr>
@@ -53,23 +89,11 @@ Dieses Repository enthält zwei eigenständige Implementierungen:
   </tr>
 </table>
 
----
+</details>
 
-## Die 5 Workflows
-
-| Workflow | Hotkey | LLM | Beschreibung |
-| :--- | :--- | :---: | :--- |
-| 🎙 **Blitztext** | `Meta+H` | – | Sprache aufnehmen, transkribieren, direkt einfügen. |
-| 🔒 **Blitztext Lokal** | `Meta+Shift+H` | – | Rein lokale Transkription, ohne Internet. |
-| ✨ **Blitztext+** | `Meta+Shift+T` | ✓ | Transkript per GPT-4o-mini sauber umformulieren. |
-| 🔥 **Blitztext $%&!** | `Meta+Shift+D` | ✓ | Emotionale Sprache in eine sachliche Nachricht wandeln. |
-| 😊 **Blitztext :)** | `Meta+Shift+E` | ✓ | Passende Emojis ergänzen (Dichte einstellbar). |
-
-Dazu Komfort-Funktionen: **Diktat-Modus** (Markdown-Notizen), **Verlauf** (Kopieren/Löschen/Zusammenführen), **Vorlesen** (Piper TTS) und Desktop-**Benachrichtigungen**.
-
----
-
-## Status auf einen Blick — Tray-Symbol
+<details>
+<summary><b>🚦 Status auf einen Blick — Tray-Symbol</b></summary>
+<br>
 
 Das Mikrofon-Symbol im System-Tray signalisiert über seine Farbe den aktuellen Zustand:
 
@@ -84,30 +108,7 @@ Das Mikrofon-Symbol im System-Tray signalisiert über seine Farbe den aktuellen 
 | 🟠 **Orange** | Verarbeitung | Transkription bzw. LLM-Umschreibung läuft. |
 | ⚪ **Grau** | Fehler | Letzter Vorgang ist fehlgeschlagen. |
 
----
-
-## Schnellstart (Linux)
-
-```bash
-# Systempakete
-sudo apt install pulseaudio-utils wl-clipboard ydotool ffmpeg python3-venv python3-evdev socat
-
-# Lokale Whisper-Engine
-pipx install openai-whisper
-
-# Projekt aufsetzen
-cd BlitztextLinux
-python3 -m venv .venv
-.venv/bin/pip install PyQt6 evdev openai pytest
-
-# evdev-Rechte (danach ab- und wieder anmelden)
-sudo usermod -aG input $USER
-
-# Starten
-./run.sh
-```
-
-Die **vollständige Anleitung** — Voraussetzungen, ydotool-Setup, Konfiguration, systemd-Autostart, Tests, Sicherheits- und Datenschutz-Hinweise — steht in **[BlitztextLinux/README.md](BlitztextLinux/README.md)**.
+</details>
 
 ---
 
