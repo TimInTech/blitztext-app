@@ -21,6 +21,15 @@ step()    { echo -e "\n${BOLD}▶ $*${RESET}"; }
 DONE_ITEMS=()
 done_add() { DONE_ITEMS+=("$1"); }
 
+# apt-get mit Wartezeit auf den dpkg-Lock: Auf frisch installierten Ubuntu-
+# Systemen blockiert unattended-upgrades den Lock oft minutenlang. Ohne
+# Timeout brechen apt-Aufrufe sofort ab und reißen wegen `set -e` das
+# gesamte Skript vor venv/torch-Installation ab.
+APT_LOCK_TIMEOUT=300
+apt_get() {
+    sudo apt-get -o "DPkg::Lock::Timeout=${APT_LOCK_TIMEOUT}" "$@"
+}
+
 # ─── Pfade ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BLITZTEXT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -106,8 +115,8 @@ done
 
 if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
     info "Installiere fehlende Pakete: ${MISSING_PKGS[*]}"
-    sudo apt-get update -qq
-    sudo apt-get install -y "${MISSING_PKGS[@]}"
+    apt_get update -qq
+    apt_get install -y "${MISSING_PKGS[@]}"
     done_add "Systempakete installiert: ${MISSING_PKGS[*]}"
     ok "Pakete installiert."
 else
@@ -118,7 +127,7 @@ if command -v ydotool &>/dev/null; then
     ok "  ydotool bereits im PATH gefunden: $(command -v ydotool)"
 else
     info "ydotool nicht im PATH gefunden. Versuche Installation per apt ..."
-    if sudo apt-get install -y ydotool; then
+    if apt_get install -y ydotool; then
         done_add "Systempaket installiert: ydotool"
         ok "ydotool installiert."
     else
