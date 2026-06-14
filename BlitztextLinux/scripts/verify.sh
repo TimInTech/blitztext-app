@@ -131,24 +131,22 @@ else
 fi
 
 echo ""
-echo -e "${BOLD}── Whisper-Backends (pipx) ──────────────────────────${RESET}"
+echo -e "${BOLD}── Whisper-Backends im .venv ────────────────────────${RESET}"
 
-# openai-whisper via pipx
-if command -v pipx &>/dev/null && pipx list 2>/dev/null | grep -q "openai-whisper"; then
-    pass "openai-whisper via pipx installiert"
-elif command -v whisper &>/dev/null; then
-    pass "whisper-Befehl gefunden: $(command -v whisper)"
-else
-    warn "openai-whisper nicht via pipx gefunden — 'pipx install openai-whisper'"
-fi
+if [[ -x "${VENV_PYTHON}" ]]; then
+    if "${VENV_PYTHON}" -c "import whisper" 2>/dev/null; then
+        pass "openai-whisper im .venv importierbar"
+    else
+        fail "openai-whisper nicht im .venv importierbar — 'bash scripts/install.sh'"
+    fi
 
-# faster-whisper via pipx
-if command -v pipx &>/dev/null && pipx list 2>/dev/null | grep -q "faster-whisper"; then
-    pass "faster-whisper via pipx installiert"
-elif python3 -c "import faster_whisper" 2>/dev/null; then
-    pass "faster_whisper Python-Modul verfügbar"
+    if "${VENV_PYTHON}" -c "import faster_whisper" 2>/dev/null; then
+        pass "faster-whisper im .venv importierbar"
+    else
+        warn "faster-whisper nicht im .venv importierbar — 'bash scripts/install.sh'"
+    fi
 else
-    warn "faster-whisper nicht gefunden (optional) — 'pipx inject openai-whisper faster-whisper'"
+    warn "Überspringe Whisper-Backend-Checks (kein .venv gefunden)"
 fi
 
 echo ""
@@ -168,6 +166,8 @@ echo -e "${BOLD}── Systemd-User-Services ───────────�
 # ydotool
 if systemctl --user is-active --quiet ydotool.service 2>/dev/null; then
     pass "ydotool.service läuft als User-Service"
+elif pgrep -x ydotoold >/dev/null 2>&1 && [[ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket" ]]; then
+    pass "ydotoold läuft bereits mit Socket: ${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
 else
     warn "ydotool.service läuft NICHT — Auto-Paste funktioniert möglicherweise nicht"
     warn "  Behebung: systemctl --user start ydotool.service"
