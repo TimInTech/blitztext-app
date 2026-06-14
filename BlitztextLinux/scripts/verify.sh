@@ -69,6 +69,13 @@ else
     fail "wl-copy nicht gefunden — 'sudo apt install wl-clipboard'"
 fi
 
+# xclip (X11 clipboard fallback)
+if command -v xclip &>/dev/null; then
+    pass "xclip gefunden: $(command -v xclip)"
+else
+    warn "xclip nicht gefunden — X11-Clipboard-Fallback fehlt ('sudo apt install xclip')"
+fi
+
 # ydotool
 if command -v ydotool &>/dev/null; then
     pass "ydotool gefunden: $(command -v ydotool)"
@@ -194,11 +201,13 @@ fi
 echo ""
 echo -e "${BOLD}── Wayland / Laufzeitumgebung ───────────────────────${RESET}"
 
-# WAYLAND_DISPLAY
+# Desktop display
 if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
     pass "WAYLAND_DISPLAY gesetzt: ${WAYLAND_DISPLAY}"
+elif [[ -n "${DISPLAY:-}" ]]; then
+    pass "DISPLAY gesetzt: ${DISPLAY} (X11-Session)"
 else
-    warn "WAYLAND_DISPLAY nicht gesetzt — Anwendung läuft möglicherweise unter X11/XWayland"
+    warn "Weder WAYLAND_DISPLAY noch DISPLAY gesetzt — Clipboard/GUI funktionieren möglicherweise nicht"
 fi
 
 # XDG_RUNTIME_DIR
