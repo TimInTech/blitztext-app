@@ -142,6 +142,8 @@ cd BlitztextLinux
 bash scripts/install.sh
 ```
 
+Wichtig: Die Befehle unten gehen vom Verzeichnis `BlitztextLinux/` aus.
+
 Das Skript ist der bevorzugte Weg für Ubuntu/Kubuntu. Es:
 - prüft Ubuntu/Debian und die nötige Python-Version
 - installiert fehlende Systempakete inkl. `pipx`
