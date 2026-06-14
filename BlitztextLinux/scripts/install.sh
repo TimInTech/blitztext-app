@@ -45,7 +45,7 @@ if [[ ! -f /etc/os-release ]]; then
 fi
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ "${ID:-}" != "ubuntu" && "${ID_LIKE:-}" != *"debian"* && "${ID:-}" != "debian" ]]; then
+if [[ "${ID:-}" != "ubuntu" && "${ID_LIKE:-}" != *"ubuntu"* && "${ID_LIKE:-}" != *"debian"* && "${ID:-}" != "debian" && "${ID:-}" != "deepin" ]]; then
     die "Dieses Skript ist nur für Ubuntu/Debian-basierte Systeme gedacht (erkannt: ${ID:-unbekannt})."
 fi
 ok "Betriebssystem erkannt: ${PRETTY_NAME:-${ID}}"
@@ -68,7 +68,6 @@ step "Systempakete prüfen und installieren"
 APT_PACKAGES=(
     pulseaudio-utils
     wl-clipboard
-    ydotool
     ffmpeg
     python3-venv
     python3-evdev
@@ -95,6 +94,18 @@ else
     ok "Alle Systempakete bereits vorhanden."
 fi
 
+if command -v ydotool &>/dev/null; then
+    ok "  ydotool bereits im PATH gefunden: $(command -v ydotool)"
+else
+    info "ydotool nicht im PATH gefunden. Versuche Installation per apt ..."
+    if sudo apt-get install -y ydotool; then
+        done_add "Systempaket installiert: ydotool"
+        ok "ydotool installiert."
+    else
+        warn "ydotool konnte per apt nicht installiert werden. Bitte manuell installieren oder prüfen."
+    fi
+fi
+
 # ─── Python venv einrichten ───────────────────────────────────────────────────
 step "Virtuelles Python-Environment einrichten"
 
@@ -112,51 +123,11 @@ PIP="${VENV_DIR}/bin/pip"
 info "Aktualisiere pip ..."
 "${PIP}" install --quiet --upgrade pip
 
-PIP_PACKAGES=(PyQt6 evdev openai pytest)
+PIP_PACKAGES=(PyQt6 evdev openai pytest openai-whisper faster-whisper)
 info "Installiere pip-Pakete: ${PIP_PACKAGES[*]} ..."
 "${PIP}" install --quiet "${PIP_PACKAGES[@]}"
 done_add "pip-Pakete installiert: ${PIP_PACKAGES[*]}"
 ok "pip-Pakete installiert."
-
-# ─── openai-whisper via pipx ──────────────────────────────────────────────────
-step "openai-whisper via pipx"
-
-pick_pipx_python() {
-    local candidate ver
-    for candidate in python3.13 python3.12 python3.11 python3; do
-        if command -v "${candidate}" &>/dev/null; then
-            ver="$(${candidate} -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
-            case "${ver}" in
-                3.11|3.12|3.13)
-                    command -v "${candidate}"
-                    return 0
-                    ;;
-            esac
-        fi
-    done
-    return 1
-}
-
-PIPX_PYTHON="$(pick_pipx_python || true)"
-
-if command -v pipx &>/dev/null; then
-    if pipx list 2>/dev/null | grep -q "openai-whisper"; then
-        ok "openai-whisper bereits via pipx installiert."
-    else
-        if [[ -n "${PIPX_PYTHON}" ]]; then
-            info "Installiere openai-whisper via pipx mit ${PIPX_PYTHON} ..."
-            pipx install --python "${PIPX_PYTHON}" openai-whisper
-        else
-            die "Kein kompatibles Python für pipx gefunden. Installieren Sie Python 3.11–3.13 und führen Sie das Skript erneut aus."
-        fi
-        done_add "openai-whisper via pipx installiert"
-        ok "openai-whisper installiert."
-    fi
-else
-    warn "pipx nicht gefunden — openai-whisper wird übersprungen."
-    warn "Installieren Sie pipx mit: sudo apt install pipx && pipx ensurepath"
-    warn "Danach: pipx install openai-whisper"
-fi
 
 # ─── Gruppe "input" ───────────────────────────────────────────────────────────
 step "Benutzergruppe 'input' prüfen"
@@ -188,6 +159,8 @@ fi
 
 if systemctl --user is-active --quiet ydotool.service 2>/dev/null; then
     ok "ydotool.service läuft bereits."
+elif pgrep -x ydotoold >/dev/null 2>&1 && [[ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket" ]]; then
+    ok "ydotoold läuft bereits mit Socket: ${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
 else
     systemctl --user start ydotool.service
     done_add "ydotool.service gestartet"
