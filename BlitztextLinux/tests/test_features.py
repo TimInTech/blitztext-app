@@ -71,7 +71,8 @@ class TestConfigFeatureFields:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture
-def home_folder():
+def home_folder(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
     d = tempfile.mkdtemp(dir=str(Path.home()), prefix=".blitztext-test-")
     yield d
     shutil.rmtree(d, ignore_errors=True)
