@@ -153,11 +153,12 @@ Das Skript ist der bevorzugte Weg für Ubuntu/Kubuntu. Es:
 ### Danach
 
 1. Falls der Benutzer neu zur Gruppe `input` hinzugefügt wurde: **ab- und wieder anmelden** oder neu starten.
-2. Kurztest starten:
+2. Anwendung starten:
    ```bash
    cd BlitztextLinux
-   .venv/bin/python app/blitztext_linux.py
+   ./run.sh
    ```
+   Das Skript findet die `.venv` automatisch und startet die App mit dem passenden Python.
 3. Wenn der Test läuft, Autostart aktivieren:
    ```bash
    systemctl --user start blitztext-linux
@@ -224,7 +225,7 @@ Starten Sie die Anwendung einmalig manuell, um sicherzugehen, dass alles funktio
 
 ```bash
 cd BlitztextLinux
-.venv/bin/python app/blitztext_linux.py
+./run.sh
 ```
 
 Erscheint das Mikrofon-Symbol im Tray und reagieren die Hotkeys korrekt, ist die Installation erfolgreich.
