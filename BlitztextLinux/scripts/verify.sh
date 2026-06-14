@@ -33,6 +33,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BLITZTEXT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 VENV_PYTHON="${BLITZTEXT_DIR}/.venv/bin/python"
 
+ydotoold_socket_path() {
+    echo "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
+}
+
+ydotoold_is_running() {
+    local socket_path
+    socket_path="$(ydotoold_socket_path)"
+    pgrep -x ydotoold >/dev/null 2>&1 && [[ -S "${socket_path}" ]]
+}
+
+ydotool_user_service_exists() {
+    systemctl --user cat ydotool.service >/dev/null 2>&1
+}
+
 echo ""
 echo -e "${BOLD}══════════════════════════════════════════════════════${RESET}"
 echo -e "${BOLD}  BlitztextLinux — Abhängigkeits-Check${RESET}"
@@ -166,11 +180,15 @@ echo -e "${BOLD}── Systemd-User-Services ───────────�
 # ydotool
 if systemctl --user is-active --quiet ydotool.service 2>/dev/null; then
     pass "ydotool.service läuft als User-Service"
-elif pgrep -x ydotoold >/dev/null 2>&1 && [[ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket" ]]; then
-    pass "ydotoold läuft bereits mit Socket: ${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
-else
-    warn "ydotool.service läuft NICHT — Auto-Paste funktioniert möglicherweise nicht"
+elif ydotoold_is_running; then
+    pass "ydotoold läuft bereits mit Socket: $(ydotoold_socket_path)"
+elif ydotool_user_service_exists; then
+    warn "ydotool.service ist vorhanden, läuft aber NICHT — Auto-Paste funktioniert möglicherweise nicht"
     warn "  Behebung: systemctl --user start ydotool.service"
+else
+    warn "ydotool.service wurde nicht gefunden und ydotoold läuft nicht mit Socket"
+    warn "  Bei apt-Installation: sudo apt install ydotool && systemctl --user start ydotool.service"
+    warn "  Bei Source-Build: ydotoold manuell starten oder eigenen systemd-User-Service anlegen"
 fi
 
 echo ""
