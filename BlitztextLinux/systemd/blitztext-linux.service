@@ -21,15 +21,15 @@ PartOf=graphical-session.target
 [Service]
 Type=simple
 
-# Warte bis WAYLAND_DISPLAY gesetzt ist (max. 15 Sekunden).
-# Verhindert Startfehler direkt nach dem Login, wenn der Wayland-Compositor
+# Warte bis Wayland oder X11 gesetzt ist (max. 15 Sekunden).
+# Verhindert Startfehler direkt nach dem Login, wenn die Desktop-Session
 # noch nicht vollständig bereit ist.
 ExecStartPre=/bin/bash -c '\
     for i in $(seq 1 15); do \
-        [ -n "${WAYLAND_DISPLAY}" ] && exit 0; \
+        if [ -n "${WAYLAND_DISPLAY}" ] || [ -n "${DISPLAY}" ]; then exit 0; fi; \
         sleep 1; \
     done; \
-    echo "WAYLAND_DISPLAY nicht gesetzt nach 15s — starte trotzdem." >&2; \
+    echo "Weder WAYLAND_DISPLAY noch DISPLAY gesetzt nach 15s — starte trotzdem." >&2; \
     exit 0'
 
 # WorkingDirectory: WIRD VON install.sh GESETZT.

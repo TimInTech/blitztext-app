@@ -81,6 +81,7 @@ step "Systempakete prüfen und installieren"
 APT_PACKAGES=(
     pulseaudio-utils
     wl-clipboard
+    xclip
     ffmpeg
     python3-venv
     python3-evdev

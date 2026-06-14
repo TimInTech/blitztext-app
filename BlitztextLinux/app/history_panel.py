@@ -106,11 +106,18 @@ def save_merged_dictation(folder: str, combined: str) -> Optional[str]:
 
 
 def _clipboard_write(text: str) -> None:
-    """Schreibt Text ins Wayland-Clipboard (stderr/stdout nach DEVNULL, da
-    wl-copy einen Hintergrund-Daemon forkt, der geerbte Pipes offen haelt)."""
+    """Schreibt Text ins Clipboard, passend zur laufenden Desktop-Session."""
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+    wayland_display = os.environ.get("WAYLAND_DISPLAY")
+    if runtime_dir and wayland_display and os.path.exists(os.path.join(runtime_dir, wayland_display)):
+        command = ["wl-copy"]
+    elif os.environ.get("DISPLAY"):
+        command = ["xclip", "-selection", "clipboard"]
+    else:
+        return
     try:
         proc = subprocess.Popen(
-            ["wl-copy"],
+            command,
             stdin=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

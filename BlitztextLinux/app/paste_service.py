@@ -3,8 +3,8 @@
 Kopiert/extrahiert aus whisper-dictation scripts/dictate_toggle.py v0.2.19.
 
 Zwei Schritte:
-  1. wl-copy  -- Text in Wayland-Clipboard schreiben
-  2. ydotool  -- Ctrl+V simulieren (nur wenn autopaste=True)
+  1. wl-copy/xclip  -- Text in Clipboard schreiben
+  2. ydotool       -- Ctrl+V simulieren (nur wenn autopaste=True)
 
 Fuer LLM-Workflows (text_improver, dampf_ablassen, emoji_text) wird
 der rewritten Text eingefuegt, nicht das rohe Transkript.
@@ -12,6 +12,7 @@ der rewritten Text eingefuegt, nicht das rohe Transkript.
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 import time
@@ -62,26 +63,33 @@ class PasteService:
             logger.debug("paste() mit leerem Text aufgerufen, uebersprungen.")
             return
 
-        self._wl_copy(text)
+        self._copy_to_clipboard(text)
 
         if self.autopaste:
             self._ydotool_paste()
 
     def clipboard_only(self, text: str) -> None:
-        """Nur wl-copy, kein ydotool -- fuer Faelle wo Auto-Paste unterwuenscht."""
+        """Nur Clipboard, kein ydotool -- fuer Faelle wo Auto-Paste unterwuenscht."""
         if not text or not text.strip():
             return
-        self._wl_copy(text)
+        self._copy_to_clipboard(text)
 
     # ------------------------------------------------------------------
     # Interne Methoden
     # ------------------------------------------------------------------
 
+    def _copy_to_clipboard(self, text: str) -> None:
+        if _has_wayland_clipboard():
+            self._wl_copy(text)
+            return
+        if _has_x11_clipboard():
+            self._xclip_copy(text)
+            return
+        raise PasteServiceError(
+            "Kein nutzbares Clipboard-Backend gefunden. Installieren: sudo apt install wl-clipboard xclip"
+        )
+
     def _wl_copy(self, text: str) -> None:
-        if shutil.which("wl-copy") is None:
-            raise PasteServiceError(
-                "wl-copy nicht gefunden. Bitte installieren: sudo apt install wl-clipboard"
-            )
         # WICHTIG: wl-copy forkt einen Hintergrund-Daemon, der die Auswahl
         # "besitzt". Dieser Kindprozess erbt offene Pipes -- mit stderr=PIPE
         # wartet subprocess.run() auf EOF und blockiert, bis der Clipboard-Daemon
@@ -103,6 +111,24 @@ class PasteService:
             ) from exc
         except subprocess.CalledProcessError as exc:
             raise PasteServiceError(f"wl-copy fehlgeschlagen (rc={exc.returncode})") from exc
+
+    def _xclip_copy(self, text: str) -> None:
+        try:
+            subprocess.run(
+                ["xclip", "-selection", "clipboard"],
+                input=text.encode("utf-8"),
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=_WL_COPY_TIMEOUT,
+            )
+            logger.debug("xclip: %d Zeichen ins Clipboard geschrieben.", len(text))
+        except subprocess.TimeoutExpired as exc:
+            raise PasteServiceError(
+                f"xclip reagierte nicht innerhalb von {_WL_COPY_TIMEOUT:.0f}s"
+            ) from exc
+        except subprocess.CalledProcessError as exc:
+            raise PasteServiceError(f"xclip fehlgeschlagen (rc={exc.returncode})") from exc
 
     def _ydotool_paste(self) -> None:
         if shutil.which("ydotool") is None:
@@ -142,8 +168,20 @@ def check_dependencies() -> list[str]:
     Verwendet von install.sh-Verifikation und Einstellungs-Dialog.
     """
     missing = []
-    if shutil.which("wl-copy") is None:
-        missing.append("wl-clipboard (wl-copy fehlt)")
+    if shutil.which("wl-copy") is None and shutil.which("xclip") is None:
+        missing.append("wl-clipboard oder xclip")
     if shutil.which("ydotool") is None:
         missing.append("ydotool")
     return missing
+
+
+def _has_wayland_clipboard() -> bool:
+    if shutil.which("wl-copy") is None:
+        return False
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+    wayland_display = os.environ.get("WAYLAND_DISPLAY")
+    return bool(runtime_dir and wayland_display and os.path.exists(os.path.join(runtime_dir, wayland_display)))
+
+
+def _has_x11_clipboard() -> bool:
+    return bool(os.environ.get("DISPLAY") and shutil.which("xclip") is not None)
