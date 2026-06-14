@@ -165,12 +165,12 @@ fi
 echo ""
 echo -e "${BOLD}── Systemd-User-Services ────────────────────────────${RESET}"
 
-# ydotoold
-if systemctl --user is-active --quiet ydotoold 2>/dev/null; then
-    pass "ydotoold läuft als User-Service"
+# ydotool
+if systemctl --user is-active --quiet ydotool.service 2>/dev/null; then
+    pass "ydotool.service läuft als User-Service"
 else
-    warn "ydotoold läuft NICHT — Auto-Paste funktioniert möglicherweise nicht"
-    warn "  Behebung: systemctl --user start ydotoold"
+    warn "ydotool.service läuft NICHT — Auto-Paste funktioniert möglicherweise nicht"
+    warn "  Behebung: systemctl --user start ydotool.service"
 fi
 
 echo ""
