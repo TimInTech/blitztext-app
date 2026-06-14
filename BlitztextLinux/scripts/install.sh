@@ -45,7 +45,7 @@ if [[ ! -f /etc/os-release ]]; then
 fi
 # shellcheck disable=SC1091
 source /etc/os-release
-if [[ "${ID:-}" != "ubuntu" && "${ID_LIKE:-}" != *"debian"* && "${ID:-}" != "debian" ]]; then
+if [[ "${ID:-}" != "ubuntu" && "${ID_LIKE:-}" != *"ubuntu"* && "${ID_LIKE:-}" != *"debian"* && "${ID:-}" != "debian" && "${ID:-}" != "deepin" ]]; then
     die "Dieses Skript ist nur für Ubuntu/Debian-basierte Systeme gedacht (erkannt: ${ID:-unbekannt})."
 fi
 ok "Betriebssystem erkannt: ${PRETTY_NAME:-${ID}}"
@@ -68,7 +68,6 @@ step "Systempakete prüfen und installieren"
 APT_PACKAGES=(
     pulseaudio-utils
     wl-clipboard
-    ydotool
     ffmpeg
     python3-venv
     python3-evdev
@@ -93,6 +92,18 @@ if [[ ${#MISSING_PKGS[@]} -gt 0 ]]; then
     ok "Pakete installiert."
 else
     ok "Alle Systempakete bereits vorhanden."
+fi
+
+if command -v ydotool &>/dev/null; then
+    ok "  ydotool bereits im PATH gefunden: $(command -v ydotool)"
+else
+    info "ydotool nicht im PATH gefunden. Versuche Installation per apt ..."
+    if sudo apt-get install -y ydotool; then
+        done_add "Systempaket installiert: ydotool"
+        ok "ydotool installiert."
+    else
+        warn "ydotool konnte per apt nicht installiert werden. Bitte manuell installieren oder prüfen."
+    fi
 fi
 
 # ─── Python venv einrichten ───────────────────────────────────────────────────
