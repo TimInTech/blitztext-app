@@ -73,6 +73,7 @@ APT_PACKAGES=(
     python3-venv
     python3-evdev
     socat
+    pipx
 )
 
 MISSING_PKGS=()
@@ -120,12 +121,34 @@ ok "pip-Pakete installiert."
 # ─── openai-whisper via pipx ──────────────────────────────────────────────────
 step "openai-whisper via pipx"
 
+pick_pipx_python() {
+    local candidate ver
+    for candidate in python3.13 python3.12 python3.11 python3; do
+        if command -v "${candidate}" &>/dev/null; then
+            ver="$(${candidate} -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+            case "${ver}" in
+                3.11|3.12|3.13)
+                    command -v "${candidate}"
+                    return 0
+                    ;;
+            esac
+        fi
+    done
+    return 1
+}
+
+PIPX_PYTHON="$(pick_pipx_python || true)"
+
 if command -v pipx &>/dev/null; then
     if pipx list 2>/dev/null | grep -q "openai-whisper"; then
         ok "openai-whisper bereits via pipx installiert."
     else
-        info "Installiere openai-whisper via pipx ..."
-        pipx install openai-whisper
+        if [[ -n "${PIPX_PYTHON}" ]]; then
+            info "Installiere openai-whisper via pipx mit ${PIPX_PYTHON} ..."
+            pipx install --python "${PIPX_PYTHON}" openai-whisper
+        else
+            die "Kein kompatibles Python für pipx gefunden. Installieren Sie Python 3.11–3.13 und führen Sie das Skript erneut aus."
+        fi
         done_add "openai-whisper via pipx installiert"
         ok "openai-whisper installiert."
     fi
@@ -148,50 +171,27 @@ else
     warn "         damit die Gruppenmitgliedschaft aktiv wird."
 fi
 
-# ─── ydotoold als systemd-User-Service ────────────────────────────────────────
-step "ydotoold systemd-User-Service einrichten"
+# ─── ydotool systemd-User-Service prüfen ─────────────────────────────────────
+step "ydotool systemd-User-Service prüfen"
 
-mkdir -p "${SYSTEMD_USER_DIR}"
-
-if [[ ! -f "${YDOTOOLD_SERVICE}" ]]; then
-    info "Erstelle ${YDOTOOLD_SERVICE} ..."
-    cat > "${YDOTOOLD_SERVICE}" <<'EOF'
-[Unit]
-Description=ydotool Daemon (ydotoold)
-Documentation=man:ydotoold(8)
-After=default.target
-
-[Service]
-Type=simple
-ExecStart=/usr/bin/ydotoold --socket-path=%t/.ydotool_socket --socket-perm=0600
-Restart=on-failure
-RestartSec=3
-
-[Install]
-WantedBy=default.target
-EOF
-    done_add "ydotoold.service angelegt"
-    ok "ydotoold.service erstellt."
+# BlitztextLinux verwendet das bestehende ydotool-User-Service-Paket.
+# Auf Debian/Ubuntu wird dieses üblicherweise bereits mit dem Paket ydotool
+# mitgebracht und startet den ydotoold-Daemon ohne einen zweiten, konkurrierenden
+# User-Service anzulegen.
+if systemctl --user is-enabled --quiet ydotool.service 2>/dev/null; then
+    ok "ydotool.service bereits aktiviert."
 else
-    ok "ydotoold.service bereits vorhanden."
+    systemctl --user enable ydotool.service
+    done_add "ydotool.service aktiviert"
+    ok "ydotool.service aktiviert."
 fi
 
-systemctl --user daemon-reload
-
-if systemctl --user is-enabled --quiet ydotoold 2>/dev/null; then
-    ok "ydotoold bereits aktiviert."
+if systemctl --user is-active --quiet ydotool.service 2>/dev/null; then
+    ok "ydotool.service läuft bereits."
 else
-    systemctl --user enable ydotoold
-    done_add "ydotoold.service aktiviert"
-    ok "ydotoold.service aktiviert."
-fi
-
-if systemctl --user is-active --quiet ydotoold 2>/dev/null; then
-    ok "ydotoold läuft bereits."
-else
-    systemctl --user start ydotoold
-    done_add "ydotoold.service gestartet"
-    ok "ydotoold.service gestartet."
+    systemctl --user start ydotool.service
+    done_add "ydotool.service gestartet"
+    ok "ydotool.service gestartet."
 fi
 
 # ─── blitztext-linux.service einrichten ───────────────────────────────────────
