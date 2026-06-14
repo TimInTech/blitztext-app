@@ -1,4 +1,6 @@
 <div align="center">
+  <img src="docs/screenshots/linux/Banner.png" alt="Blitztext Linux Banner" width="500" style="border-radius: 10px; margin-bottom: 20px;">
+  
   <h1>Blitztext Linux</h1>
   <p><strong>Dein lokaler KI-Sprachassistent für KDE Plasma & Wayland</strong></p>
 
@@ -8,11 +10,6 @@
     <img src="https://img.shields.io/badge/Plattform-Ubuntu%2FKubuntu%20%2B%20KDE%20Plasma-blue" alt="Plattform">
   </p>
   <p><i>Sprache per Hotkey aufnehmen, lokal oder online transkribieren, optional per LLM umschreiben und direkt in die aktive Anwendung einfügen.</i></p>
-
-  <br>
-  <img src="docs/screenshots/linux/main-window-compact-glass.png" alt="Hauptfenster" width="250" style="margin-right: 15px;">
-  <img src="docs/screenshots/linux/tray-states.png" alt="Statusfarben" width="250" style="margin-right: 15px;">
-  <img src="docs/screenshots/linux/history.png" alt="Verlauf" width="250">
 </div>
 
 ---
@@ -184,6 +181,12 @@ Das Mikrofon im System-Tray ist dein Indikator für den aktuellen Zustand:
 
 Falls du keine Tastatur parat hast oder Hotkeys blockiert sind:
 
+<div align="center">
+  <br>
+  <img src="docs/screenshots/linux/main-window-compact-glass.png" alt="Hauptfenster" width="400">
+  <br><br>
+</div>
+
 - **Maus-Steuerung:** Start/Stopp-Button für die Aufnahme.
 - **Workflow-Menü:** Dropdown für alle 5 Modi.
 - **Abbruch:** Verwirft eine Aufnahme sofort ohne Transkription.
@@ -196,6 +199,13 @@ Falls du keine Tastatur parat hast oder Hotkeys blockiert sind:
 ## Diktat, Verlauf und Vorlesen
 
 Zusätzlich zu den Workflows bietet das Tool drei Komfort-Funktionen:
+
+<div align="center">
+  <br>
+  <img src="docs/screenshots/linux/history.png" alt="Verlauf" width="350" style="margin-right: 15px;">
+  <img src="docs/screenshots/linux/tts.png" alt="Vorlesen" width="350">
+  <br><br>
+</div>
 
 | Menüpunkt | Beschreibung |
 | :--- | :--- |
