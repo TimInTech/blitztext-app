@@ -137,9 +137,21 @@ PIP="${VENV_DIR}/bin/pip"
 info "Aktualisiere pip ..."
 "${PIP}" install --quiet --upgrade pip
 
+# openai-whisper hängt von PyTorch ab. Der normale PyPI-Resolver zieht auf
+# Linux oft CUDA-Wheels, die mehrere Gigabyte belegen und auf kleinen Ubuntu-/
+# Kubuntu-Systemen schnell Quota-/Plattenplatzfehler auslösen. Blitztext nutzt
+# standardmäßig CPU-Transkription, daher wird zuerst das CPU-only-Torch-Wheel
+# installiert. Danach ist die torch-Abhängigkeit für openai-whisper bereits
+# erfüllt und pip lädt keine CUDA-Pakete nach.
+info "Installiere CPU-only PyTorch für Whisper ..."
+"${PIP}" install --quiet --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch
+
+done_add "CPU-only PyTorch installiert"
+ok "CPU-only PyTorch installiert."
+
 PIP_PACKAGES=(PyQt6 evdev openai pytest openai-whisper faster-whisper)
 info "Installiere pip-Pakete: ${PIP_PACKAGES[*]} ..."
-"${PIP}" install --quiet "${PIP_PACKAGES[@]}"
+"${PIP}" install --quiet --no-cache-dir "${PIP_PACKAGES[@]}"
 done_add "pip-Pakete installiert: ${PIP_PACKAGES[*]}"
 ok "pip-Pakete installiert."
 
