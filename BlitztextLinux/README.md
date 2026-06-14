@@ -210,7 +210,7 @@ Das Skript ist der bevorzugte Weg für Ubuntu/Kubuntu. Es:
 
 ### Danach
 
-1. Falls der Benutzer neu zur Gruppe `input` hinzugefügt wurde: **ab- und wieder anmelden** oder neu starten.
+1. **Neustart erforderlich:** Nach der Installation muss das System **neu gestartet** werden (alternativ ab- und wieder anmelden), damit die Gruppe `input` in der aktuellen Sitzung aktiv wird — ohne diesen Schritt funktionieren die evdev-Hotkeys nicht, selbst wenn `scripts/install.sh` den Benutzer bereits zur Gruppe hinzugefügt hat. `scripts/verify.sh` zeigt nach dem Neustart, ob die Gruppe aktiv ist.
 2. Anwendung starten:
    ```bash
    cd BlitztextLinux
@@ -273,9 +273,9 @@ cd BlitztextLinux
 bash scripts/install.sh
 ```
 
-### 2. Re-Login durchführen
+### 2. Neustart durchführen (zwingend erforderlich)
 
-Falls der Benutzer noch nicht Mitglied der Gruppe `input` war, informiert das Skript über einen nötigen Re-Login. **Melden Sie sich ab und wieder an** (oder starten Sie das System neu), damit evdev-Hotkeys funktionieren.
+Starten Sie das System **neu** (alternativ: ab- und wieder anmelden). Dieser Schritt ist in jedem Fall notwendig, damit die Gruppe `input` in der aktuellen Sitzung aktiv wird und die evdev-Hotkeys funktionieren — auch wenn der Benutzer laut `/etc/group` bereits Mitglied der Gruppe war.
 
 ### 3. Manuellen Test durchführen
 

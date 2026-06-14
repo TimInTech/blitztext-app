@@ -15,22 +15,11 @@
 [Unit]
 Description=Blitztext Linux — Speech-to-Text Tray App
 Documentation=https://github.com/TimInTech/blitztext-app
-After=graphical-session.target
+After=graphical-session.target graphical-session-ready.target
 PartOf=graphical-session.target
 
 [Service]
 Type=simple
-
-# Warte bis Wayland oder X11 gesetzt ist (max. 15 Sekunden).
-# Verhindert Startfehler direkt nach dem Login, wenn die Desktop-Session
-# noch nicht vollständig bereit ist.
-ExecStartPre=/bin/bash -c '\
-    for i in $(seq 1 15); do \
-        if [ -n "${WAYLAND_DISPLAY}" ] || [ -n "${DISPLAY}" ]; then exit 0; fi; \
-        sleep 1; \
-    done; \
-    echo "Weder WAYLAND_DISPLAY noch DISPLAY gesetzt nach 15s — starte trotzdem." >&2; \
-    exit 0'
 
 # WorkingDirectory: WIRD VON install.sh GESETZT.
 # Der Platzhalter %BLITZTEXT_DIR% wird durch den absoluten Pfad ersetzt,

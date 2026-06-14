@@ -47,6 +47,10 @@ ydotool_user_service_exists() {
     systemctl --user cat ydotool.service >/dev/null 2>&1
 }
 
+ydotoold_provider_exists() {
+    command -v ydotoold >/dev/null 2>&1 || ydotool_user_service_exists
+}
+
 echo ""
 echo -e "${BOLD}══════════════════════════════════════════════════════${RESET}"
 echo -e "${BOLD}  BlitztextLinux — Abhängigkeits-Check${RESET}"
@@ -174,8 +178,11 @@ echo ""
 echo -e "${BOLD}── Benutzer & Gruppen ───────────────────────────────${RESET}"
 
 # Gruppe "input"
-if groups "$(whoami)" 2>/dev/null | grep -qw "input"; then
-    pass "Benutzer ist Mitglied der Gruppe 'input'"
+if id -Gn | grep -qw "input"; then
+    pass "Gruppe 'input' ist in dieser Sitzung aktiv"
+elif groups "$(whoami)" 2>/dev/null | grep -qw "input"; then
+    warn "Benutzer ist in /etc/group für 'input' eingetragen, aber die aktuelle Sitzung nutzt die Gruppe noch nicht"
+    warn "  Behebung: Re-Login durchführen oder System neu starten"
 else
     warn "Benutzer NICHT in Gruppe 'input' — evdev-Hotkeys funktionieren nicht"
     warn "  Behebung: sudo usermod -aG input \$USER  (dann Re-Login)"
@@ -192,10 +199,13 @@ elif ydotoold_is_running; then
 elif ydotool_user_service_exists; then
     warn "ydotool.service ist vorhanden, läuft aber NICHT — Auto-Paste funktioniert möglicherweise nicht"
     warn "  Behebung: systemctl --user start ydotool.service"
+elif command -v ydotool &>/dev/null && ! ydotoold_provider_exists; then
+    info "ydotool-Client vorhanden, aber kein ydotoold-Provider erkannt"
+    info "  Erwartet bei Ubuntu apt-ydotool 0.1.8-3build1; Auto-Paste ist dort nicht verfügbar"
+    info "  Clipboard-Kopie bleibt verfügbar; für Auto-Paste ydotoold aus Source oder per User-Service bereitstellen"
 else
-    warn "ydotool.service wurde nicht gefunden und ydotoold läuft nicht mit Socket"
-    warn "  Bei apt-Installation: sudo apt install ydotool && systemctl --user start ydotool.service"
-    warn "  Bei Source-Build: ydotoold manuell starten oder eigenen systemd-User-Service anlegen"
+    warn "ydotoold wurde nicht gefunden oder läuft nicht mit Socket"
+    warn "  Auto-Paste benötigt ydotoold oder einen passenden systemd-User-Service"
 fi
 
 echo ""

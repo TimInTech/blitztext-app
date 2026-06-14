@@ -8,6 +8,7 @@ TRANSCRIBING/LLM_REWRITING haengen blieb.
 GUI-Tests (echte BlitztextApp-Statemaschine) laufen nur mit WHISPER_GUI_TESTS=1,
 da sie QApplication + Tray-Icon (Display) benoetigen.
 """
+import logging
 import os
 import subprocess
 import sys
@@ -58,6 +59,27 @@ class TestPasteTimeouts:
                    return_value=subprocess.CompletedProcess(["wl-copy"], 0, b"", b"")) as run_mock:
             svc.paste("text")
         assert run_mock.call_args.kwargs.get("timeout") is not None
+
+    def test_paste_missing_ydotoold_does_not_raise(self, caplog):
+        svc = PasteService(autopaste=True)
+        caplog.set_level(logging.WARNING, logger="blitztext.paste_service")
+        with patch("app.paste_service.shutil.which", return_value="/usr/bin/tool"), \
+             patch("app.paste_service.time.sleep"), \
+             patch("app.paste_service.subprocess.run") as run_mock:
+            def side_effect(cmd, *args, **kwargs):
+                if cmd[0] == "wl-copy":
+                    return subprocess.CompletedProcess(cmd, 0, b"", b"")
+                return subprocess.CompletedProcess(
+                    cmd,
+                    1,
+                    b"",
+                    b"failed to connect to /run/user/1000/.ydotool_socket: No such file or directory",
+                )
+            run_mock.side_effect = side_effect
+
+            svc.paste("hallo welt")
+
+        assert "ydotoold nicht verfügbar" in caplog.text
 
 
 # ---------------------------------------------------------------------------

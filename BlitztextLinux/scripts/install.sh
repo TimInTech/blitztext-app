@@ -43,6 +43,10 @@ ydotool_user_service_exists() {
     systemctl --user cat ydotool.service >/dev/null 2>&1
 }
 
+ydotoold_provider_exists() {
+    command -v ydotoold >/dev/null 2>&1 || ydotool_user_service_exists
+}
+
 # ─── Voraussetzungen prüfen ───────────────────────────────────────────────────
 step "Voraussetzungen prüfen"
 
@@ -85,6 +89,8 @@ APT_PACKAGES=(
     ffmpeg
     python3-venv
     python3-evdev
+    build-essential
+    python3-dev
     socat
     pipx
 )
@@ -171,10 +177,9 @@ fi
 # ─── ydotool systemd-User-Service prüfen ─────────────────────────────────────
 step "ydotool systemd-User-Service prüfen"
 
-# BlitztextLinux verwendet das bestehende ydotool-User-Service-Paket.
-# Auf Debian/Ubuntu wird dieses üblicherweise bereits mit dem Paket ydotool
-# mitgebracht und startet den ydotoold-Daemon ohne einen zweiten, konkurrierenden
-# User-Service anzulegen.
+# BlitztextLinux verwendet ydotool nur, wenn auch ein ydotoold-Provider
+# vorhanden ist. Ubuntu apt-ydotool 0.1.8 ist client-only; in diesem Fall bleibt
+# Auto-Paste deaktiviert, Clipboard-Kopie funktioniert weiter.
 if systemctl --user is-active --quiet ydotool.service 2>/dev/null; then
     ok "ydotool.service läuft bereits."
 elif ydotoold_is_running; then
@@ -191,10 +196,13 @@ elif ydotool_user_service_exists; then
     systemctl --user start ydotool.service
     done_add "ydotool.service gestartet"
     ok "ydotool.service gestartet."
+elif command -v ydotool &>/dev/null && ! ydotoold_provider_exists; then
+    info "ydotool-Client gefunden, aber kein ydotoold-Provider."
+    info "Ubuntu apt-ydotool 0.1.8 ist client-only; Auto-Paste bleibt dort nicht verfügbar."
+    info "Blitztext kopiert Texte weiterhin ins Clipboard."
 else
-    warn "ydotool.service wurde nicht gefunden."
-    warn "Wenn ydotool aus dem Quellcode gebaut wurde, starten Sie ydotoold manuell"
-    warn "oder legen Sie einen passenden systemd-User-Service an."
+    warn "ydotoold wurde nicht gefunden oder läuft nicht."
+    warn "Auto-Paste ist erst verfügbar, wenn ydotoold läuft oder ein ydotool.service existiert."
 fi
 
 # ─── blitztext-linux.service einrichten ───────────────────────────────────────
@@ -235,8 +243,11 @@ echo ""
 echo -e "${BOLD}Nächste Schritte:${RESET}"
 echo ""
 
-if groups "$(whoami)" | grep -qw "input"; then
-    echo -e "  ${GREEN}✔${RESET}  Gruppe 'input' bereits aktiv — kein Re-Login nötig."
+if id -Gn | grep -qw "input"; then
+    echo -e "  ${GREEN}✔${RESET}  Gruppe 'input' ist in dieser Sitzung aktiv — kein Re-Login nötig."
+elif groups "$(whoami)" 2>/dev/null | grep -qw "input"; then
+    echo -e "  ${YELLOW}1.${RESET}  ${BOLD}Re-Login durchführen${RESET} (oder System neu starten),"
+    echo      "     damit die bereits eingetragene Gruppe 'input' in dieser Sitzung aktiv wird."
 else
     echo -e "  ${YELLOW}1.${RESET}  ${BOLD}Re-Login durchführen${RESET} (oder System neu starten),"
     echo      "     damit die Gruppe 'input' für evdev-Hotkeys aktiv wird."

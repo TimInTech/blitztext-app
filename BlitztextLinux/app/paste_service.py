@@ -29,6 +29,12 @@ _KEY_DELAY_MS = 80
 # TRANSCRIBING/LLM_REWRITING haengen und kein neuer Hotkey-Toggle ist moeglich).
 _WL_COPY_TIMEOUT = 5.0
 _YDOTOOL_TIMEOUT = 5.0
+_YDOTOOL_MISSING_DAEMON_MARKERS = (
+    "failed to connect",
+    "no such file or directory",
+    ".ydotool_socket",
+    "connection refused",
+)
 
 
 class PasteServiceError(Exception):
@@ -159,6 +165,12 @@ class PasteService:
         if result.returncode != 0:
             stderr = result.stderr.decode(errors="replace").strip() if result.stderr else ""
             # Nicht fatal -- Clipboard-Inhalt ist bereits gesetzt
+            if _looks_like_missing_ydotoold(stderr):
+                logger.warning(
+                    "ydotoold nicht verfügbar -- Auto-Paste uebersprungen "
+                    "(Text liegt bereits im Clipboard)."
+                )
+                return
             logger.warning("ydotool Ctrl+V fehlgeschlagen (rc=%d): %s", result.returncode, stderr)
 
 
@@ -187,3 +199,8 @@ def _has_wayland_clipboard() -> bool:
 
 def _has_x11_clipboard() -> bool:
     return bool(os.environ.get("DISPLAY") and shutil.which("xclip") is not None)
+
+
+def _looks_like_missing_ydotoold(stderr: str) -> bool:
+    lowered = stderr.lower()
+    return any(marker in lowered for marker in _YDOTOOL_MISSING_DAEMON_MARKERS)
