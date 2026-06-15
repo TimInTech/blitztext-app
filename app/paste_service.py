@@ -24,6 +24,13 @@ logger = logging.getLogger("blitztext.paste_service")
 _PASTE_DELAY = 0.15
 # ydotool key-delay in ms (identisch zu whisper-dictation)
 _KEY_DELAY_MS = 80
+# Strg+V als rohe Keycodes (`<keycode>:<pressed>`). ydotool >=1.0
+# interpretiert KEINE Tastennamen mehr wie "ctrl+v" -- solche Werte werden
+# stillschweigend als "nicht interpretierbar" behandelt und erzeugen nur einen
+# Delay (rc=0, KEIN Fehler), sodass Auto-Paste unbemerkt ausbleibt.
+# KEY_LEFTCTRL=29, KEY_V=47 (siehe /usr/include/linux/input-event-codes.h).
+# Sequenz: Strg down, V down, V up, Strg up.
+_CTRL_V_KEYCODES = ["29:1", "47:1", "47:0", "29:0"]
 # Subprocess-Timeouts: verhindern, dass ein haengendes wl-copy/ydotool den
 # Transkriptions-Worker dauerhaft blockiert (sonst bleibt der App-State auf
 # TRANSCRIBING/LLM_REWRITING haengen und kein neuer Hotkey-Toggle ist moeglich).
@@ -147,7 +154,7 @@ class PasteService:
         time.sleep(_PASTE_DELAY)
         try:
             result = subprocess.run(
-                ["ydotool", "key", "--key-delay", str(_KEY_DELAY_MS), "ctrl+v"],
+                ["ydotool", "key", "--key-delay", str(_KEY_DELAY_MS), *_CTRL_V_KEYCODES],
                 check=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
