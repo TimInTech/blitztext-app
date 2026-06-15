@@ -85,7 +85,7 @@ sudo apt install pulseaudio-utils wl-clipboard xclip ydotool ffmpeg python3-venv
 | :--- | :--- |
 | `pulseaudio-utils` | `parec` für die Audioaufnahme via PulseAudio/PipeWire |
 | `wl-clipboard` / `xclip` | Zwischenablage unter Wayland (`wl-copy`) bzw. X11-Fallback |
-| `ydotool` (≥ 1.0) | Simuliert `Ctrl+V` für automatisches Einfügen (Auto-Paste). Ab Version 1.0 werden rohe Keycodes verwendet; Ubuntu 24.04/25.10/26.04 erfüllen das. Ältere 0.x-Pakete (z. B. Ubuntu 22.04, 0.1.8) sind client-only und unterstützen kein Auto-Paste. |
+| `ydotool` (≥ 1.0) | Simuliert `Ctrl+V` für automatisches Einfügen (Auto-Paste). Ab Version 1.0 werden rohe Keycodes verwendet. **Ubuntu 25.10/26.04** liefern ydotool ≥ 1.0 (1.0.4) direkt via `apt`. **Ubuntu 24.04 und 22.04** liefern per `apt` nur 0.1.x (z. B. 0.1.8), das keine Keycodes unterstützt und damit kein Auto-Paste – dort ydotool ≥ 1.0 aus dem Quellcode bauen (siehe unten). Auto-Paste auf 24.04, 25.10 und 26.04 verifiziert. |
 | `ffmpeg` | Audio-Konvertierungen |
 | `python3-evdev` | Eingabegeräte-Zugriff für den systemweiten Hotkey-Daemon |
 | `socat` | Optionale Socket-Kommunikation |
@@ -114,6 +114,13 @@ pipx inject openai-whisper faster-whisper   # optional, für beschleunigte Ausf�
 **5. ydotool prüfen**
 ```bash
 systemctl --user start ydotool.service
+```
+Liefert `apt` nur ydotool 0.1.x (Ubuntu 24.04/22.04), ydotool ≥ 1.0 aus dem Quellcode bauen:
+```bash
+sudo apt install cmake build-essential scdoc git
+git clone --depth 1 --branch v1.0.4 https://github.com/ReimuNotMoe/ydotool.git
+cd ydotool && cmake -B build -DCMAKE_BUILD_TYPE=Release && make -C build && sudo make -C build install
+systemctl --user enable --now ydotool.service   # nutzt /usr/local/bin/ydotoold
 ```
 
 **6. Anwendung starten**
