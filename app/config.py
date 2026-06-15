@@ -30,6 +30,7 @@ DEFAULTS: dict[str, Any] = {
         "text_improver_tone": "neutral",
         "emoji_density": "mittel",
         "dampf_system_prompt": "",
+        "custom_terms": [],
     },
 }
 
@@ -246,6 +247,14 @@ class BlitztextConfig:
     def dampf_system_prompt(self, value: str) -> None:
         self._data["workflows"]["dampf_system_prompt"] = value
 
+    @property
+    def custom_terms(self) -> list[str]:
+        return list(self._data["workflows"].get("custom_terms", []))
+
+    @custom_terms.setter
+    def custom_terms(self, value: list[str]) -> None:
+        self._data["workflows"]["custom_terms"] = _sanitize_terms(value)
+
     def as_dict(self) -> dict[str, Any]:
         import copy
         return copy.deepcopy(self._data)
@@ -283,21 +292,46 @@ class BlitztextConfig:
         # Merge sub-defaults
         for k, v in DEFAULTS["workflows"].items():
             if k not in wf:
-                wf[k] = v
+                if isinstance(v, dict):
+                    wf[k] = _deep_merge(v, {})
+                elif isinstance(v, list):
+                    wf[k] = list(v)
+                else:
+                    wf[k] = v
 
         if wf.get("text_improver_tone") not in VALID_TONES:
             wf["text_improver_tone"] = "neutral"
         if wf.get("emoji_density") not in VALID_EMOJI_DENSITIES:
             wf["emoji_density"] = "mittel"
+        wf["custom_terms"] = _sanitize_terms(wf.get("custom_terms"))
+
+
+def _sanitize_terms(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if not isinstance(value, str):
+            continue
+        term = value.strip()
+        if not term or term in seen:
+            continue
+        seen.add(term)
+        result.append(term)
+    return result
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
-    result = dict(base)
+    import copy
+
+    result = copy.deepcopy(base)
     for key, val in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(val, dict):
             result[key] = _deep_merge(result[key], val)
         else:
-            result[key] = val
+            result[key] = copy.deepcopy(val)
     return result
 
 

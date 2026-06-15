@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 from app.workflows import WorkflowType
 
 logger = logging.getLogger("blitztext.llm_service")
@@ -49,6 +49,7 @@ class LLMService:
         tone: str = "neutral",
         emoji_density: str = "mittel",
         dampf_system_prompt: str = "",
+        custom_terms: Optional[list[str]] = None,
     ) -> None:
         """
         Args:
@@ -57,6 +58,7 @@ class LLMService:
             tone:    Text-improver tone: 'formal' | 'neutral' | 'locker'.
             emoji_density: 'wenig' | 'mittel' | 'viel'.
             dampf_system_prompt: Override for dampf_ablassen system prompt.
+            custom_terms: Globale Liste von Eigennamen/Fachbegriffen.
         """
         if not api_key:
             raise ValueError("api_key must not be empty")
@@ -65,6 +67,7 @@ class LLMService:
         self.tone = tone
         self.emoji_density = emoji_density
         self.dampf_system_prompt = dampf_system_prompt
+        self.custom_terms = self._sanitize_terms(custom_terms)
 
         self._openai_installed = True
         if client is not None:
@@ -85,12 +88,37 @@ class LLMService:
         if not self._openai_installed and type(self.client).__name__ != 'MagicMock':
             raise LLMServiceError("openai-Paket nicht installiert. Bitte: pip install openai")
 
+    @staticmethod
+    def _sanitize_terms(values: Optional[list[str]]) -> list[str]:
+        if not values:
+            return []
+        result: list[str] = []
+        seen: set[str] = set()
+        for value in values:
+            if not isinstance(value, str):
+                continue
+            term = value.strip()
+            if not term or term in seen:
+                continue
+            seen.add(term)
+            result.append(term)
+        return result
+
+    def _custom_terms_instruction(self) -> str:
+        terms = self._sanitize_terms(self.custom_terms)
+        if not terms:
+            return ""
+        return (
+            "\n\nWichtig: Diese Eigennamen und Fachbegriffe muessen exakt so geschrieben werden: "
+            + ", ".join(terms)
+        )
+
     def dampf_ablassen(self, transcript: str, custom_system_prompt: str = "") -> str:
         self._check_openai()
         if not transcript or not transcript.strip():
             raise ValueError("transcript must not be empty")
         
-        system = custom_system_prompt.strip() or self.dampf_system_prompt.strip() or _DAMPF_SYSTEM
+        system = (custom_system_prompt.strip() or self.dampf_system_prompt.strip() or _DAMPF_SYSTEM) + self._custom_terms_instruction()
         
         response = self.client.chat.completions.create(
             model=MODEL,
@@ -112,7 +140,7 @@ class LLMService:
         if tone not in {"formal", "neutral", "locker"}:
             raise ValueError(f"invalid tone: {tone}")
 
-        system = custom_prompt.strip() or _TEXT_IMPROVER_SYSTEM_TEMPLATE.format(tone=tone)
+        system = (custom_prompt.strip() or _TEXT_IMPROVER_SYSTEM_TEMPLATE.format(tone=tone)) + self._custom_terms_instruction()
 
         response = self.client.chat.completions.create(
             model=MODEL,
@@ -134,7 +162,7 @@ class LLMService:
         if density not in {"wenig", "mittel", "viel"}:
             raise ValueError(f"invalid density: {density}")
 
-        system = _EMOJI_SYSTEM_TEMPLATE.format(density=density)
+        system = _EMOJI_SYSTEM_TEMPLATE.format(density=density) + self._custom_terms_instruction()
 
         response = self.client.chat.completions.create(
             model=MODEL,

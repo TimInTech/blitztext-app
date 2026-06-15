@@ -74,6 +74,42 @@ class TestWorkflowConfig:
     def test_custom_dampf_prompt_default_empty(self, config):
         assert config.workflows["dampf_system_prompt"] == ""
 
+    def test_custom_terms_default_empty_list(self, config):
+        assert config.custom_terms == []
+
+    def test_custom_terms_persist_after_save_reload(self, config, config_dir):
+        config.custom_terms = ["Blitztext", "OpenRouter", "Leopoldshöhe"]
+        config.save()
+        loaded = BlitztextConfig(config_dir=config_dir)
+        assert loaded.custom_terms == ["Blitztext", "OpenRouter", "Leopoldshöhe"]
+
+    def test_custom_terms_sanitized_on_setter(self, config):
+        config.custom_terms = ["  Blitztext  ", "", "   ", "OpenRouter", "Blitztext", 5]
+        assert config.custom_terms == ["Blitztext", "OpenRouter"]
+
+    def test_partial_workflow_config_without_custom_terms_remains_compatible(self, config_dir):
+        config_dir.mkdir(parents=True, exist_ok=True)
+        partial = {
+            "workflows": {
+                "text_improver_tone": "formal",
+                "emoji_density": "viel",
+            }
+        }
+        (config_dir / "config.json").write_text(json.dumps(partial), encoding="utf-8")
+        loaded = BlitztextConfig(config_dir=config_dir)
+        assert loaded.custom_terms == []
+
+    def test_custom_terms_sanitized_on_load(self, config_dir):
+        config_dir.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "workflows": {
+                "custom_terms": [" Blitztext ", "", "OpenRouter", "Blitztext", None, 7, "   "]
+            }
+        }
+        (config_dir / "config.json").write_text(json.dumps(payload), encoding="utf-8")
+        loaded = BlitztextConfig(config_dir=config_dir)
+        assert loaded.custom_terms == ["Blitztext", "OpenRouter"]
+
 
 class TestTranscriptionHotkey:
     def test_default_transcription_hotkey(self, config):

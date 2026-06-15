@@ -4,8 +4,9 @@ from unittest.mock import MagicMock, patch
 from app.llm_service import LLMService
 
 
-API_KEY = "sk-test-dummy"
+API_KEY = "***"
 RAW_TRANSCRIPT = "Ich bin total genervt von diesem Projekt und alles ist kaputt!"
+CUSTOM_TERMS = ["Blitztext", "OpenRouter", "Leopoldshöhe"]
 
 
 @pytest.fixture
@@ -20,6 +21,10 @@ class TestLLMServiceInit:
 
     def test_api_key_stored(self, service):
         assert service.api_key == API_KEY
+
+    def test_custom_terms_are_stored(self):
+        service = LLMService(api_key=API_KEY, custom_terms=CUSTOM_TERMS)
+        assert service.custom_terms == CUSTOM_TERMS
 
 
 class TestDampfAblassen:
@@ -50,6 +55,17 @@ class TestDampfAblassen:
         system_messages = [m for m in messages if m["role"] == "system"]
         assert len(system_messages) >= 1
 
+    def test_system_prompt_contains_custom_terms_instruction(self):
+        service = LLMService(api_key=API_KEY, custom_terms=CUSTOM_TERMS)
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "OK"
+        with patch.object(service.client.chat.completions, "create", return_value=mock_response) as mock_create:
+            service.dampf_ablassen(RAW_TRANSCRIPT)
+        messages = mock_create.call_args.kwargs.get("messages") or mock_create.call_args.args[0]
+        system_message = next(m["content"] for m in messages if m["role"] == "system")
+        assert "muessen exakt so geschrieben werden" in system_message
+        assert ", ".join(CUSTOM_TERMS) in system_message
+
 
 class TestTextImprover:
     def test_neutral_tone(self, service):
@@ -73,6 +89,26 @@ class TestTextImprover:
         all_content = " ".join(m["content"] for m in messages)
         assert custom in all_content
 
+    def test_prompt_contains_custom_terms_instruction(self):
+        service = LLMService(api_key=API_KEY, custom_terms=CUSTOM_TERMS)
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "OK"
+        with patch.object(service.client.chat.completions, "create", return_value=mock_response) as mock_create:
+            service.text_improver("text", tone="neutral")
+        messages = mock_create.call_args.kwargs.get("messages") or mock_create.call_args.args[0]
+        system_message = next(m["content"] for m in messages if m["role"] == "system")
+        assert "muessen exakt so geschrieben werden" in system_message
+        assert ", ".join(CUSTOM_TERMS) in system_message
+
+    def test_prompt_without_custom_terms_has_no_extra_instruction(self, service):
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "OK"
+        with patch.object(service.client.chat.completions, "create", return_value=mock_response) as mock_create:
+            service.text_improver("text", tone="neutral")
+        messages = mock_create.call_args.kwargs.get("messages") or mock_create.call_args.args[0]
+        system_message = next(m["content"] for m in messages if m["role"] == "system")
+        assert "muessen exakt so geschrieben werden" not in system_message
+
 
 class TestEmojiText:
     @pytest.mark.parametrize("density", ["wenig", "mittel", "viel"])
@@ -86,6 +122,17 @@ class TestEmojiText:
     def test_invalid_density_raises(self, service):
         with pytest.raises(ValueError, match="density"):
             service.emoji_text("text", density="extrem")
+
+    def test_prompt_contains_custom_terms_instruction(self):
+        service = LLMService(api_key=API_KEY, custom_terms=CUSTOM_TERMS)
+        mock_response = MagicMock()
+        mock_response.choices[0].message.content = "Text mit Emojis 🎉"
+        with patch.object(service.client.chat.completions, "create", return_value=mock_response) as mock_create:
+            service.emoji_text("Hallo Welt", density="mittel")
+        messages = mock_create.call_args.kwargs.get("messages") or mock_create.call_args.args[0]
+        system_message = next(m["content"] for m in messages if m["role"] == "system")
+        assert "muessen exakt so geschrieben werden" in system_message
+        assert ", ".join(CUSTOM_TERMS) in system_message
 
 
 class TestAPIError:

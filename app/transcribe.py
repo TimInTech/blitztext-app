@@ -41,6 +41,7 @@ def transcribe(
     model: str = "base",
     language: str = "de",
     backend: str = "openai-whisper",
+    custom_terms: list[str] | None = None,
 ) -> str:
     """Transkribiert eine WAV-Datei und gibt den Text zurueck.
 
@@ -49,6 +50,7 @@ def transcribe(
         model:    Whisper-Modellname (z. B. 'base', 'small').
         language: Sprachcode ('de', 'en', ...) oder 'auto' fuer Autodetect.
         backend:  'openai-whisper' | 'faster-whisper'
+        custom_terms: Optionale Eigennamen/Fachbegriffe als Transkriptions-Hint.
 
     Returns:
         Transkribierter Text (stripped). Leer wenn nichts erkannt.
@@ -73,9 +75,11 @@ def transcribe(
         raise TranscribeError(f"WAV-Datei ist leer: {wav_file}")
 
     try:
+        hint = _build_transcription_hint(custom_terms)
+        hotwords = _build_hotwords(custom_terms)
         if backend == "faster-whisper":
-            return _transcribe_faster(str(wav_file), model, language)
-        return _transcribe_openai(str(wav_file), model, language)
+            return _transcribe_faster(str(wav_file), model, language, hint=hint, hotwords=hotwords)
+        return _transcribe_openai(str(wav_file), model, language, hint=hint)
     except ImportError as exc:
         raise TranscribeError(str(exc)) from exc
     except Exception as exc:
@@ -90,23 +94,72 @@ def _normalize_language(language: str) -> Optional[str]:
     return None if not language or language == "auto" else language
 
 
+def _clean_custom_terms(custom_terms: list[str] | None) -> list[str]:
+    if not custom_terms:
+        return []
+    result: list[str] = []
+    seen: set[str] = set()
+    for term in custom_terms:
+        if not isinstance(term, str):
+            continue
+        cleaned = term.strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        result.append(cleaned)
+    return result
+
+
+def _build_transcription_hint(custom_terms: list[str] | None) -> str | None:
+    cleaned = _clean_custom_terms(custom_terms)
+    if not cleaned:
+        return None
+    return "Eigennamen und Begriffe: " + ", ".join(cleaned)
+
+
+def _build_hotwords(custom_terms: list[str] | None) -> str | None:
+    cleaned = _clean_custom_terms(custom_terms)
+    if not cleaned:
+        return None
+    return ", ".join(cleaned)
+
+
 def _should_force_cpu_for_openai() -> bool:
     return os.environ.get("WHISPER_USE_CUDA", "").lower() not in {"1", "true", "yes"}
 
 
-def _transcribe_openai(wav_file: str, model_name: str, language: str) -> str:
-    warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
-    if _should_force_cpu_for_openai():
-        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+def _load_openai_whisper_module():
     try:
         import whisper  # noqa: PLC0415
     except ImportError as exc:
         raise ImportError(
             "openai-whisper nicht installiert. Bitte: pipx install openai-whisper"
         ) from exc
+    return whisper
+
+
+def _load_faster_whisper_model_class():
+    try:
+        from faster_whisper import WhisperModel  # noqa: PLC0415
+    except ImportError as exc:
+        raise ImportError(
+            "faster-whisper nicht installiert. Bitte: pipx inject openai-whisper faster-whisper"
+        ) from exc
+    return WhisperModel
+
+
+def _transcribe_openai(wav_file: str, model_name: str, language: str, hint: str | None = None) -> str:
+    warnings.filterwarnings("ignore", message="FP16 is not supported on CPU")
+    if _should_force_cpu_for_openai():
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    whisper = _load_openai_whisper_module()
 
     model = whisper.load_model(model_name)
-    result = model.transcribe(wav_file, language=_normalize_language(language))
+    result = model.transcribe(
+        wav_file,
+        language=_normalize_language(language),
+        initial_prompt=hint,
+    )
     if not isinstance(result, dict):
         logger.warning("Transcription result is not a dict: %r", type(result).__name__)
         return ""
@@ -117,19 +170,25 @@ def _transcribe_openai(wav_file: str, model_name: str, language: str) -> str:
     return text.strip()
 
 
-def _transcribe_faster(wav_file: str, model_name: str, language: str) -> str:
-    try:
-        from faster_whisper import WhisperModel  # noqa: PLC0415
-    except ImportError as exc:
-        raise ImportError(
-            "faster-whisper nicht installiert. Bitte: pipx inject openai-whisper faster-whisper"
-        ) from exc
+def _transcribe_faster(
+    wav_file: str,
+    model_name: str,
+    language: str,
+    hint: str | None = None,
+    hotwords: str | None = None,
+) -> str:
+    WhisperModel = _load_faster_whisper_model_class()
 
     hf_cache = os.path.expanduser("~/.cache/huggingface/hub")
     os.makedirs(hf_cache, exist_ok=True)
 
     model = WhisperModel(model_name, device="auto", compute_type="int8")
-    segments, _ = model.transcribe(wav_file, language=_normalize_language(language))
+    segments, _ = model.transcribe(
+        wav_file,
+        language=_normalize_language(language),
+        initial_prompt=hint,
+        hotwords=hotwords,
+    )
     parts = [getattr(seg, "text", "") for seg in segments]
     return " ".join(parts).strip()
 

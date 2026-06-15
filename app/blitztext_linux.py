@@ -19,7 +19,8 @@ from PyQt6.QtGui import QAction, QBrush, QColor, QIcon, QKeySequence, QPainter, 
 from PyQt6.QtWidgets import (
     QApplication, QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
     QFormLayout, QComboBox, QLineEdit, QCheckBox, QPlainTextEdit,
-    QPushButton, QDialogButtonBox, QLabel, QMessageBox, QMenu, QSystemTrayIcon, QStyle
+    QPushButton, QDialogButtonBox, QLabel, QMessageBox, QMenu, QSystemTrayIcon, QStyle,
+    QListWidget,
 )
 
 # Make project importable when running directly
@@ -210,6 +211,29 @@ class SettingsDialog(QDialog):
         self.edit_dampf_prompt.setPlainText(self.config.dampf_system_prompt)
         self.edit_dampf_prompt.setPlaceholderText("Standard-Systemprompt verwenden...")
 
+        self.edit_custom_term = QLineEdit()
+        self.edit_custom_term.setPlaceholderText("z. B. Blitztext")
+        self.edit_custom_term.returnPressed.connect(self._add_custom_term)
+        self.list_custom_terms = QListWidget()
+        self.list_custom_terms.addItems(self.config.custom_terms)
+        self.list_custom_terms.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
+        self.btn_add_custom_term = QPushButton("Hinzufügen")
+        self.btn_add_custom_term.clicked.connect(self._add_custom_term)
+        self.btn_remove_custom_term = QPushButton("Ausgewählte entfernen")
+        self.btn_remove_custom_term.clicked.connect(self._remove_selected_custom_term)
+
+        custom_terms_input_layout = QHBoxLayout()
+        custom_terms_input_layout.addWidget(self.edit_custom_term)
+        custom_terms_input_layout.addWidget(self.btn_add_custom_term)
+
+        custom_terms_layout = QVBoxLayout()
+        custom_terms_layout.addLayout(custom_terms_input_layout)
+        custom_terms_layout.addWidget(self.list_custom_terms)
+        custom_terms_layout.addWidget(self.btn_remove_custom_term)
+
+        custom_terms_widget = QWidget()
+        custom_terms_widget.setLayout(custom_terms_layout)
+
         form_llm.addRow("OpenAI API-Key:", api_key_layout)
         form_llm.addRow("", create_help_label("Erforderlich für alle KI/LLM-Features (Blitztext+, Dampf ablassen, Emojis)."))
 
@@ -218,6 +242,8 @@ class SettingsDialog(QDialog):
 
         form_llm.addRow("Dampf-Umschreiber Prompt:", self.edit_dampf_prompt)
         form_llm.addRow("", create_help_label("Eigener System-Prompt, um wütende Aussagen in eine professionelle Form umzuschreiben."))
+        form_llm.addRow("Eigennamen / Begriffe:", custom_terms_widget)
+        form_llm.addRow("", create_help_label("Wörter, Namen und Fachbegriffe, die bei Transkription und KI-Umschreibung exakt beibehalten werden sollen."))
 
         self.tabs.addTab(tab_llm, "KI-Workflows")
 
@@ -261,6 +287,35 @@ class SettingsDialog(QDialog):
             self.edit_api_key.setEchoMode(QLineEdit.EchoMode.Password)
             self.btn_show_key.setText("Anzeigen")
 
+    def _collect_custom_terms(self) -> list[str]:
+        terms: list[str] = []
+        seen: set[str] = set()
+        for index in range(self.list_custom_terms.count()):
+            item = self.list_custom_terms.item(index)
+            if item is None:
+                continue
+            term = item.text().strip()
+            if not term or term in seen:
+                continue
+            seen.add(term)
+            terms.append(term)
+        return terms
+
+    def _add_custom_term(self) -> None:
+        term = self.edit_custom_term.text().strip()
+        if not term:
+            self.edit_custom_term.clear()
+            return
+        if term not in self._collect_custom_terms():
+            self.list_custom_terms.addItem(term)
+        self.edit_custom_term.clear()
+        self.edit_custom_term.setFocus()
+
+    def _remove_selected_custom_term(self) -> None:
+        for item in self.list_custom_terms.selectedItems():
+            row = self.list_custom_terms.row(item)
+            self.list_custom_terms.takeItem(row)
+
     def save_settings(self) -> None:
         try:
             self.config.model = self.combo_model.currentText()
@@ -274,6 +329,7 @@ class SettingsDialog(QDialog):
             self.config.text_improver_tone = self.combo_tone.currentText()
             self.config.emoji_density = self.combo_emoji.currentText()
             self.config.dampf_system_prompt = self.edit_dampf_prompt.toPlainText().strip()
+            self.config.custom_terms = self._collect_custom_terms()
 
             self.config.autopaste = self.check_autopaste.isChecked()
             self.config.notes_folder = self.edit_notes_folder.text().strip()
@@ -306,6 +362,7 @@ class _TranscribeWorker(QRunnable):
         llm_service: LLMService,
         autopaste: bool,
         paste_service: PasteService,
+        custom_terms: Optional[list[str]] = None,
     ) -> None:
         super().__init__()
         self.signals = _WorkerSignals()
@@ -317,6 +374,7 @@ class _TranscribeWorker(QRunnable):
         self.llm_service = llm_service
         self.autopaste = autopaste
         self.paste_service = paste_service
+        self.custom_terms = list(custom_terms or [])
 
     def _emit(self, signal_name: str, *args) -> None:
         try:
@@ -332,6 +390,7 @@ class _TranscribeWorker(QRunnable):
                 model=self.model,
                 language=self.language,
                 backend=self.backend,
+                custom_terms=self.custom_terms,
             )
 
             if not transcript or not transcript.strip():
@@ -379,7 +438,8 @@ class BlitztextApp(QObject):
             api_key=self.config.openai_api_key or "placeholder",
             tone=self.config.text_improver_tone,
             emoji_density=self.config.emoji_density,
-            dampf_system_prompt=self.config.dampf_system_prompt
+            dampf_system_prompt=self.config.dampf_system_prompt,
+            custom_terms=self.config.custom_terms,
         )
         self.audio_recorder = AudioRecorder()
         self.paste_service = PasteService(autopaste=self.config.autopaste)
@@ -552,7 +612,8 @@ class BlitztextApp(QObject):
                 api_key=self.config.openai_api_key or "placeholder",
                 tone=self.config.text_improver_tone,
                 emoji_density=self.config.emoji_density,
-                dampf_system_prompt=self.config.dampf_system_prompt
+                dampf_system_prompt=self.config.dampf_system_prompt,
+                custom_terms=self.config.custom_terms,
             )
             self.update_menu_availability()
 
@@ -657,7 +718,8 @@ class BlitztextApp(QObject):
                 workflow=self.current_workflow,
                 llm_service=self.llm_service,
                 autopaste=self.config.autopaste,
-                paste_service=self.paste_service
+                paste_service=self.paste_service,
+                custom_terms=self.config.custom_terms,
             )
 
             worker.signals.status_changed.connect(self._on_worker_status_changed)

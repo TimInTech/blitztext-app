@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from app.config import Config
+from app import transcribe as transcribe_module
 from app.history_panel import (
     save_dictation_note,
     merge_dictation_text,
@@ -64,6 +65,80 @@ class TestConfigFeatureFields:
         assert cfg.history_size == 50
         assert cfg.tts_speed == 1.0
         assert cfg.notes_folder == ""
+
+
+class TestTranscriptionHints:
+    def test_build_transcription_hint_none_for_empty_input(self):
+        assert transcribe_module._build_transcription_hint(None) is None
+        assert transcribe_module._build_transcription_hint([]) is None
+
+    def test_build_transcription_hint_sanitizes_terms(self):
+        hint = transcribe_module._build_transcription_hint([" Blitztext ", "", "OpenRouter", None, "   "])
+        assert hint == "Eigennamen und Begriffe: Blitztext, OpenRouter"
+
+    def test_openai_backend_receives_initial_prompt(self, tmp_path):
+        wav_file = tmp_path / "sample.wav"
+        wav_file.write_bytes(b"not-empty")
+
+        class FakeModel:
+            def __init__(self):
+                self.kwargs = None
+
+            def transcribe(self, *_args, **kwargs):
+                self.kwargs = kwargs
+                return {"text": " Hallo "}
+
+        fake_model = FakeModel()
+
+        class FakeWhisperModule:
+            @staticmethod
+            def load_model(_model_name):
+                return fake_model
+
+        fake_whisper_module = FakeWhisperModule()
+
+        with patch("app.transcribe._load_openai_whisper_module", return_value=fake_whisper_module):
+            result = transcribe_module.transcribe(
+                wav_file=wav_file,
+                model="base",
+                language="de",
+                backend="openai-whisper",
+                custom_terms=["Blitztext", "OpenRouter"],
+            )
+
+        assert result == "Hallo"
+        assert fake_model.kwargs["initial_prompt"] == "Eigennamen und Begriffe: Blitztext, OpenRouter"
+
+    def test_faster_backend_receives_initial_prompt_and_hotwords(self, tmp_path):
+        wav_file = tmp_path / "sample.wav"
+        wav_file.write_bytes(b"not-empty")
+
+        class FakeSegment:
+            def __init__(self, text):
+                self.text = text
+
+        class FakeWhisperModel:
+            last_kwargs = None
+
+            def __init__(self, *_args, **_kwargs):
+                pass
+
+            def transcribe(self, *_args, **kwargs):
+                type(self).last_kwargs = kwargs
+                return iter([FakeSegment("Hallo"), FakeSegment("Welt")]), {"language": "de"}
+
+        with patch("app.transcribe._load_faster_whisper_model_class", return_value=FakeWhisperModel):
+            result = transcribe_module.transcribe(
+                wav_file=wav_file,
+                model="base",
+                language="de",
+                backend="faster-whisper",
+                custom_terms=["Blitztext", "OpenRouter"],
+            )
+
+        assert result == "Hallo Welt"
+        assert FakeWhisperModel.last_kwargs["initial_prompt"] == "Eigennamen und Begriffe: Blitztext, OpenRouter"
+        assert FakeWhisperModel.last_kwargs["hotwords"] == "Blitztext, OpenRouter"
 
 
 # ---------------------------------------------------------------------------
