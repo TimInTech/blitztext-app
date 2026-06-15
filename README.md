@@ -85,7 +85,7 @@ sudo apt install pulseaudio-utils wl-clipboard xclip ydotool ffmpeg python3-venv
 | :--- | :--- |
 | `pulseaudio-utils` | `parec` für die Audioaufnahme via PulseAudio/PipeWire |
 | `wl-clipboard` / `xclip` | Zwischenablage unter Wayland (`wl-copy`) bzw. X11-Fallback |
-| `ydotool` | Simuliert `Ctrl+V` für automatisches Einfügen (Auto-Paste) |
+| `ydotool` (≥ 1.0) | Simuliert `Ctrl+V` für automatisches Einfügen (Auto-Paste). Ab Version 1.0 werden rohe Keycodes verwendet; Ubuntu 24.04/25.10/26.04 erfüllen das. Ältere 0.x-Pakete (z. B. Ubuntu 22.04, 0.1.8) sind client-only und unterstützen kein Auto-Paste. |
 | `ffmpeg` | Audio-Konvertierungen |
 | `python3-evdev` | Eingabegeräte-Zugriff für den systemweiten Hotkey-Daemon |
 | `socat` | Optionale Socket-Kommunikation |
