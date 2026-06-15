@@ -18,6 +18,12 @@
 
 ---
 
+## Aktueller Screenshot
+
+![Blitztext Linux Screenshot](docs/screenshots/linux/readme-screenshot-20260615-031517.png)
+
+---
+
 ## Features
 
 - **Globale Hotkeys:** Jederzeit von überall im System aufnehmen.
