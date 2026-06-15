@@ -1,80 +1,102 @@
-# Setup
+# Setup Reference
 
-This guide is for people who want to build and inspect the preview themselves.
-
-## 1. Requirements
-
-- macOS 14 or newer
-- Full Xcode, with Command Line Tools installed
-- XcodeGen
-- Homebrew, if you want to install XcodeGen with `brew install xcodegen`
-- Optional for online workflows: an OpenAI API key
-- Optional for secure local transcription: a local WhisperKit/CoreML model
-
-Install XcodeGen manually if needed:
+This document is the legacy setup note for the Blitztext repository.
+The current Linux install path is the one in `BlitztextLinux/README.md`:
 
 ```bash
-brew install xcodegen
+cd BlitztextLinux
+bash scripts/install.sh
 ```
 
-## 2. Clone And Build
+## After installation
+
+1. Restart or log out and back in so the `input` group is active.
+2. Run the verification script:
+
+   ```bash
+   bash scripts/verify.sh
+   ```
+
+3. Start the app manually:
+
+   ```bash
+   ./run.sh
+   ```
+
+4. Enable autostart if you want it on every login:
+
+   ```bash
+   systemctl --user start blitztext-linux
+   ```
+
+<details>
+<summary><b>Autostart wieder deaktivieren</b></summary>
 
 ```bash
-git clone https://github.com/cmagnussen/blitztext-app.git
-cd blitztext-app
-./build.sh --debug
+systemctl --user stop blitztext-linux
+systemctl --user disable blitztext-linux
 ```
+</details>
 
-To launch after building:
+## Manual install
+
+If you want to debug the Linux setup path step by step:
+
+**1. System packages**
 
 ```bash
-./build.sh --run
+sudo apt install pulseaudio-utils wl-clipboard xclip ydotool ffmpeg python3-venv python3-evdev build-essential python3-dev socat pipx
 ```
 
-## 3. Configure OpenAI For Online Workflows
+| Paket | Zweck |
+| :--- | :--- |
+| `pulseaudio-utils` | `parec` for audio capture via PulseAudio/PipeWire |
+| `wl-clipboard` / `xclip` | Clipboard support under Wayland (`wl-copy`) and X11 fallback |
+| `ydotool` | Simulates `Ctrl+V` for auto-paste |
+| `ffmpeg` | Audio conversion |
+| `python3-evdev` | Input-device access for the global hotkey daemon |
+| `socat` | Optional socket communication |
+| `pipx` | Isolated installation of Whisper engines |
 
-Open the app settings and paste your own OpenAI API key if you want online transcription or rewriting workflows.
+**2. Grant evdev access**
 
-The preview currently uses:
-
-- `whisper-1` for transcription
-- `gpt-4o-mini` for lightweight rewriting
-- `gpt-4o` for the calmer-message workflow
-
-You are responsible for API access, billing, and data handling in your own OpenAI account.
-
-Never commit your API key into this repository, issues, logs, or screenshots.
-
-You can skip this step if you only want to test local transcription with a local WhisperKit model.
-
-## 4. Optional Local Transcription
-
-To use secure local transcription, choose a compatible WhisperKit CoreML model in the app and click **Installieren**. Blitztext stores models in:
-
-```text
-~/Library/Application Support/Blitztext/models/whisperkit/
+```bash
+sudo usermod -aG input $USER
 ```
 
-Recommended first model: `openai_whisper-small_216MB`.
+**3. Virtual environment and Python packages**
 
-See [local-models.md](local-models.md) for the exact command, model links, and expected folder layout.
+```bash
+cd BlitztextLinux
+python3 -m venv .venv
+source .venv/bin/activate
+pip install PyQt6 evdev openai pytest openai-whisper faster-whisper
+```
 
-## 5. macOS Permissions
+**4. Whisper engine via pipx**
 
-The app needs Microphone permission to record audio.
+If you want to install `openai-whisper` outside the venv:
 
-For automatic paste into the previous app, grant Accessibility permission in macOS System Settings. Without it, you can still copy and paste manually.
+```bash
+pipx install --python "$(command -v python3.11)" openai-whisper
+pipx inject openai-whisper faster-whisper   # optional
+```
 
-Blitztext does not need Full Disk Access. Auto-paste uses the Accessibility permission because the app simulates Cmd+V after putting the result on the clipboard.
+**5. Start ydotool**
+
+```bash
+systemctl --user start ydotool.service
+```
+
+**6. Launch the app**
+
+```bash
+./run.sh
+```
 
 ## Troubleshooting
 
-- If `xcodebuild` reports that the active developer directory is only Command Line Tools, run `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`.
-- If the build cannot find XcodeGen, install it explicitly with `brew install xcodegen`.
-- If online transcription fails immediately, check whether the API key is present and valid.
-- If secure local mode is disabled, check whether a WhisperKit model is installed in the expected folder.
-- If transcription works but paste does not, this is not an OpenAI billing issue. Check **Privacy & Security -> Accessibility**, restart Blitztext after changing the permission, and make sure the cursor is focused in a text field before starting the workflow.
-- If macOS shows multiple Blitztext entries under Accessibility, remove or disable stale entries, run the app from the final location (`/Applications` if you used `./build.sh --install`), then grant the permission again.
-- If the target app blocks synthetic paste or the target app was not detected, the result still stays on the clipboard so you can press Cmd+V manually.
-- If audio is missing, check Microphone permission and macOS input settings.
-- If you see OpenAI errors, verify model access and account billing.
+- If `xcodebuild` or XcodeGen appears in your notes, you are looking at an old macOS document.
+- If install or runtime checks fail, start with `bash scripts/verify.sh`.
+- If hotkeys do not trigger, confirm the `input` group membership and restart your session.
+- If auto-paste fails but transcription works, check `ydotool.service`, clipboard tooling, and the active desktop session.

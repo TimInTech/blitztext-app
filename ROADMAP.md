@@ -1,31 +1,30 @@
-# Roadmap
+# Blitztext Linux Roadmap
 
-This is a preview roadmap, not a promise.
+This roadmap describes the Linux-focused direction of the repository.
+It is a planning note, not a promise.
 
-## Current Scope
+## Current scope
 
-- macOS menubar app
-- local recording and hotkeys
-- direct OpenAI API calls with a user-provided API key
-- transcription, rewriting, calmer-message, and emoji workflows
-- no hosted backend
-- no other platforms
-- no packaged public release
+- Linux desktop app for Ubuntu/Kubuntu on KDE Plasma and Wayland
+- PyQt6 tray application with a real window fallback
+- Global hotkeys via `evdev`
+- Local transcription via `openai-whisper` and optional `faster-whisper`
+- Optional OpenAI rewriting workflows
+- Diktat, Verlauf, Vorlesen, and notifications
+- Install / verify / autostart flow driven by `BlitztextLinux/scripts/install.sh` and `BlitztextLinux/scripts/verify.sh`
 
-## Next Useful Work
+## Next useful work
 
-- Make first-run setup clearer.
-- Improve credential setup, validation, and recovery UX.
-- Add a small automated test layer around prompt construction and text quality filters.
-- Add provider boundaries so OpenAI and future local transcription can be swapped more cleanly.
-- Prototype local transcription with WhisperKit or whisper.cpp.
-- Reduce the Accessibility blast radius, ideally by moving synthetic paste into a smaller helper with narrower responsibilities.
-- Add stronger supply-chain checks around downloaded local speech models.
-- Add signed and notarized release builds when the project is ready for non-developer users.
+- Keep the Linux README and `docs/` tree aligned with the actual app behavior
+- Tighten CI coverage for repo-root docs and scripts, not only `BlitztextLinux/**`
+- Reduce stale local artifacts and improve repo hygiene
+- Improve the X11 fallback story or document the Wayland-only limitations more clearly
+- Keep the installer and verify script in sync with the dependencies they check
+- Add more regression coverage around startup, config, and transcription edge cases
 
-## Not In Scope Yet
+## Not in scope
 
-- Production support.
-- Accounts, sync, teams, or hosted infrastructure.
-- Claims that the app is offline or privacy-complete.
-- App Store distribution.
+- Hosted backend services
+- App Store distribution
+- macOS-first feature work
+- Secrets management outside the local config file and user-controlled OpenAI account
