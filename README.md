@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/screenshots/linux/Banner.png" alt="Blitztext Linux Banner" width="500" style="border-radius: 10px; margin-bottom: 20px;">
+  <img src="docs/screenshots/linux/Banner.png" alt="Blitztext Linux Banner" width="860">
   
   <h1>Blitztext Linux</h1>
   <p><strong>Dein lokaler KI-Sprachassistent für KDE Plasma & Wayland</strong></p>
@@ -13,18 +13,13 @@
 </div>
 
 > [!IMPORTANT]
-> **Hinweis zur macOS-Version:** Der ursprüngliche Mac-Code wurde aus diesem Linux-Port komplett entfernt, da er hier nicht mehr benötigt wird. Wenn du die macOS-Version von Blitztext suchst, besuche bitte das [offizielle Haupt-Repository](https://github.com/cmagnussen/blitztext-app). 
-> `BlitztextLinux` ist eine eigenständige, leistungsstarke Python 3/PyQt6-Implementierung optimiert für **Kubuntu/Ubuntu unter KDE Plasma mit Wayland**.
-
----
-
-## Aktueller Screenshot
-
-![Blitztext Linux Screenshot](docs/screenshots/linux/readme-screenshot-20260615-031517.png)
+> **Eigenständiger Linux-Port:** Dieses Repository enthält ausschließlich den Linux-Port von Blitztext – eine eigenständige Python 3/PyQt6-Implementierung optimiert für **Kubuntu/Ubuntu unter KDE Plasma mit Wayland**. Für die originale macOS-Version besuche bitte das [offizielle Haupt-Repository](https://github.com/cmagnussen/blitztext-app).
 
 ---
 
 ## Features
+
+- **NEU: Eigennamen / Begriffe:** Erweitere das Vokabular der KI um eigene Begriffe, Namen oder Fachwörter für perfekte Transkriptionen.
 
 - **Globale Hotkeys:** Jederzeit von überall im System aufnehmen.
 - **Auto-Paste:** Erkennt Sprache und fügt sie direkt dort ein, wo der Cursor ist.
@@ -149,7 +144,7 @@ Blitztext registriert globale Hotkeys via `evdev`. Mit diesen Kombinationen hast
 Die KI-Workflows helfen bei Formulierung, Ton und Emojis. Die passenden Einstellungen findest du direkt in der App:
 
 <div align="center">
-  <img src="docs/screenshots/linux/settings-ki-workflows.png" alt="KI-Workflows Einstellungen" width="700">
+  <img src="docs/screenshots/linux/settings-ki-workflows.png" alt="KI-Workflows Einstellungen" width="480">
   <br><br>
 </div>
 
@@ -197,7 +192,7 @@ Falls du keine Tastatur parat hast oder Hotkeys blockiert sind:
 
 <div align="center">
   <br>
-  <img src="docs/screenshots/linux/main-window-compact-glass.png" alt="Hauptfenster" width="400">
+  <img src="docs/screenshots/linux/main-window-compact-glass.png" alt="Hauptfenster" width="480">
   <br><br>
 </div>
 
@@ -216,8 +211,8 @@ Zusätzlich zu den Workflows bietet das Tool drei Komfort-Funktionen:
 
 <div align="center">
   <br>
-  <img src="docs/screenshots/linux/history.png" alt="Verlauf" width="350" style="margin-right: 15px;">
-  <img src="docs/screenshots/linux/tts.png" alt="Vorlesen" width="350">
+  <img src="docs/screenshots/linux/history.png" alt="Verlauf" width="340">
+  <img src="docs/screenshots/linux/tts.png" alt="Vorlesen" width="340">
   <br><br>
 </div>
 
@@ -245,7 +240,7 @@ Zusätzlich zu den Workflows bietet das Tool drei Komfort-Funktionen:
 Alles wird lokal und sicher unter `~/.config/blitztext-linux/config.json` gespeichert. 
 
 <div align="center">
-  <img src="docs/screenshots/linux/settings-ki-workflows.png" alt="Einstellungen KI-Workflows" width="500">
+  <img src="docs/screenshots/linux/settings-allgemein.png" alt="Einstellungen Allgemein" width="480">
   <br><br>
 </div>
 
