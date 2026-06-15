@@ -245,7 +245,7 @@ Zusätzlich zu den Workflows bietet das Tool drei Komfort-Funktionen:
 Alles wird lokal und sicher unter `~/.config/blitztext-linux/config.json` gespeichert. 
 
 <div align="center">
-  <img src="docs/screenshots/linux/settings-allgemein.png" alt="Einstellungen Allgemein" width="500">
+  <img src="docs/screenshots/linux/settings-ki-workflows.png" alt="Einstellungen KI-Workflows" width="500">
   <br><br>
 </div>
 
