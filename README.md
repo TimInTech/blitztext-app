@@ -144,6 +144,15 @@ Blitztext registriert globale Hotkeys via `evdev`. Mit diesen Kombinationen hast
 > [!NOTE]
 > **LLM-Workflows** (`Blitztext+`, `Blitztext $%&!`, `Blitztext :)`) setzen einen gültigen **OpenAI API-Key** voraus. Ohne diesen Key sind diese Funktionen im Menü und über die Hotkeys deaktiviert bzw. führen zu einer Fehlermeldung.
 
+## KI-Workflows
+
+Die KI-Workflows helfen bei Formulierung, Ton und Emojis. Die passenden Einstellungen findest du direkt in der App:
+
+<div align="center">
+  <img src="docs/screenshots/linux/settings-ki-workflows.png" alt="KI-Workflows Einstellungen" width="700">
+  <br><br>
+</div>
+
 ---
 
 ## Tray-Symbol: Statusfarben
