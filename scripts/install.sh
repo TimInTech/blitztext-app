@@ -21,6 +21,45 @@ step()    { echo -e "\n${BOLD}▶ $*${RESET}"; }
 DONE_ITEMS=()
 done_add() { DONE_ITEMS+=("$1"); }
 
+resolve_hotkey_mode() {
+    if [[ -n "${BLITZTEXT_NO_HOTKEY+x}" ]]; then
+        case "${BLITZTEXT_NO_HOTKEY}" in
+            0)
+                HOTKEY_ENABLED=1
+                ;;
+            1)
+                HOTKEY_ENABLED=0
+                ;;
+            *)
+                die "BLITZTEXT_NO_HOTKEY muss 0 oder 1 sein (aktuell: ${BLITZTEXT_NO_HOTKEY})."
+                ;;
+        esac
+        return
+    fi
+
+    if [[ ! -t 0 ]]; then
+        HOTKEY_ENABLED=1
+        return
+    fi
+
+    echo ""
+    echo -e "${BOLD}Betriebsmodus wählen:${RESET}"
+    echo "  1) Globale Hotkeys einrichten (empfohlen für volle Bedienung)"
+    echo "  2) Nur Fenster/Tray nutzen (ohne input-Gruppe, ohne globale Hotkeys)"
+    read -r -p "Auswahl [1/2, Standard: 1]: " hotkey_choice
+    case "${hotkey_choice:-1}" in
+        1)
+            HOTKEY_ENABLED=1
+            ;;
+        2)
+            HOTKEY_ENABLED=0
+            ;;
+        *)
+            die "Ungültige Auswahl: ${hotkey_choice}"
+            ;;
+    esac
+}
+
 # apt-get mit Wartezeit auf den dpkg-Lock: Auf frisch installierten Ubuntu-
 # Systemen blockiert unattended-upgrades den Lock oft minutenlang. Ohne
 # Timeout brechen apt-Aufrufe sofort ab und reißen wegen `set -e` das
@@ -87,6 +126,14 @@ if [[ "${PY_MAJOR}" -lt 3 || ( "${PY_MAJOR}" -eq 3 && "${PY_MINOR}" -lt 10 ) ]];
     die "Python 3.10 oder neuer erforderlich (gefunden: ${PY_VERSION})."
 fi
 ok "Python-Version: ${PY_VERSION}"
+
+HOTKEY_ENABLED=1
+resolve_hotkey_mode
+if [[ "${HOTKEY_ENABLED}" -eq 1 ]]; then
+    ok "Betriebsmodus: Globale Hotkeys via evdev/input."
+else
+    ok "Betriebsmodus: Nur Fenster/Tray, ohne globale Hotkeys."
+fi
 
 # ─── apt-Pakete installieren ──────────────────────────────────────────────────
 step "Systempakete prüfen und installieren"
@@ -171,16 +218,22 @@ done_add "pip-Pakete installiert: ${PIP_PACKAGES[*]}"
 ok "pip-Pakete installiert."
 
 # ─── Gruppe "input" ───────────────────────────────────────────────────────────
-step "Benutzergruppe 'input' prüfen"
+if [[ "${HOTKEY_ENABLED}" -eq 1 ]]; then
+    step "Benutzergruppe 'input' prüfen"
 
-if groups "$(whoami)" | grep -qw "input"; then
-    ok "Benutzer ist bereits Mitglied der Gruppe 'input'."
+    if groups "$(whoami)" | grep -qw "input"; then
+        ok "Benutzer ist bereits Mitglied der Gruppe 'input'."
+    else
+        info "Füge $(whoami) zur Gruppe 'input' hinzu ..."
+        sudo usermod -aG input "$(whoami)"
+        done_add "Benutzer zur Gruppe 'input' hinzugefügt (Re-Login erforderlich!)"
+        warn "WICHTIG: Sie müssen sich ab- und wieder anmelden (oder neu starten),"
+        warn "         damit die Gruppenmitgliedschaft aktiv wird."
+    fi
 else
-    info "Füge $(whoami) zur Gruppe 'input' hinzu ..."
-    sudo usermod -aG input "$(whoami)"
-    done_add "Benutzer zur Gruppe 'input' hinzugefügt (Re-Login erforderlich!)"
-    warn "WICHTIG: Sie müssen sich ab- und wieder anmelden (oder neu starten),"
-    warn "         damit die Gruppenmitgliedschaft aktiv wird."
+    step "Benutzergruppe 'input' überspringen"
+    info "GUI/Tray-Modus gewählt: sudo usermod -aG input wird nicht ausgeführt."
+    info "Blitztext startet nur mit Fenster/Tray-Bedienung; globale evdev-Hotkeys sind ohne input-Gruppe nicht aktiv."
 fi
 
 # ─── ydotool systemd-User-Service prüfen ─────────────────────────────────────
@@ -249,17 +302,31 @@ for item in "${DONE_ITEMS[@]}"; do
 done
 
 echo ""
+echo -e "${BOLD}Betriebsmodus:${RESET}"
+if [[ "${HOTKEY_ENABLED}" -eq 1 ]]; then
+    echo -e "  ${GREEN}✔${RESET}  Globale Hotkeys via evdev/input sind vorgesehen."
+else
+    echo -e "  ${GREEN}✔${RESET}  GUI/Tray-Modus ohne globale Hotkeys ist vorgesehen."
+    echo      "     Start/Stopp läuft über Fenster oder Tray; die input-Gruppe wurde nicht verändert."
+fi
+
+echo ""
 echo -e "${BOLD}Nächste Schritte:${RESET}"
 echo ""
 
-if id -Gn | grep -qw "input"; then
-    echo -e "  ${GREEN}✔${RESET}  Gruppe 'input' ist in dieser Sitzung aktiv — kein Re-Login nötig."
-elif groups "$(whoami)" 2>/dev/null | grep -qw "input"; then
-    echo -e "  ${YELLOW}1.${RESET}  ${BOLD}Re-Login durchführen${RESET} (oder System neu starten),"
-    echo      "     damit die bereits eingetragene Gruppe 'input' in dieser Sitzung aktiv wird."
+if [[ "${HOTKEY_ENABLED}" -eq 0 ]]; then
+    echo -e "  ${GREEN}✔${RESET}  Kein Re-Login für die input-Gruppe nötig."
 else
-    echo -e "  ${YELLOW}1.${RESET}  ${BOLD}Re-Login durchführen${RESET} (oder System neu starten),"
-    echo      "     damit die Gruppe 'input' für evdev-Hotkeys aktiv wird."
+    if id -Gn | grep -qw "input"; then
+        echo -e "  ${GREEN}✔${RESET}  Gruppe 'input' ist in dieser Sitzung aktiv — kein Re-Login nötig."
+    elif groups "$(whoami)" 2>/dev/null | grep -qw "input"; then
+        echo -e "  ${YELLOW}1.${RESET}  ${BOLD}Re-Login durchführen${RESET} (oder System neu starten),"
+        echo      "     damit die bereits eingetragene Gruppe 'input' in dieser Sitzung aktiv wird."
+    else
+        echo -e "  ${YELLOW}1.${RESET}  ${BOLD}Optional später Hotkeys aktivieren:${RESET}"
+        echo      "     sudo usermod -aG input \$USER"
+        echo      "     Danach ab- und wieder anmelden oder neu starten."
+    fi
 fi
 
 echo ""

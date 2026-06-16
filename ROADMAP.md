@@ -21,6 +21,7 @@ It is a planning note, not a promise.
 - Improve the X11 fallback story or document the Wayland-only limitations more clearly
 - Keep the installer and verify script in sync with the dependencies they check
 - Add more regression coverage around startup, config, and transcription edge cases
+- Replace the current `evdev`/`input` global-hotkey path with a desktop-native XDG GlobalShortcuts integration when it is practical for KDE/Wayland
 
 ## Not in scope
 
