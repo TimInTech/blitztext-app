@@ -38,6 +38,7 @@ from app.history_panel import HistoryPanel
 from app.tts_window import TtsWindow
 from app.main_window import MainWindow
 from app import notify as notify_service
+from app import __version__ as APP_VERSION
 
 # Set up module logger
 logger = logging.getLogger("blitztext.main")
@@ -81,6 +82,12 @@ def _infer_wayland_display() -> Optional[str]:
         return None
 
     return sorted(candidates)[0] if candidates else None
+
+
+def _is_hotkey_device_access_error(err_msg: str) -> bool:
+    """Return True for hotkey startup errors that can fall back to GUI/tray."""
+    text = err_msg.casefold()
+    return any(marker in text for marker in ("tastatur", "input", "evdev"))
 
 
 def _require_display_environment() -> None:
@@ -268,6 +275,12 @@ class SettingsDialog(QDialog):
         self.spin_history_size.setCurrentText(str(self.config.history_size))
         form_general.addRow("Verlauf-Größe:", self.spin_history_size)
         form_general.addRow("", create_help_label("Maximale Anzahl der im Verlauf gespeicherten Einträge."))
+
+        # Dezente Versionsanzeige ganz unten auf der letzten Einstellungsseite
+        version_label = QLabel(f"Version {APP_VERSION}")
+        version_label.setStyleSheet("color: gray; font-size: 9px;")
+        version_label.setAlignment(Qt.AlignmentFlag.AlignRight)
+        form_general.addRow(version_label)
 
         self.tabs.addTab(tab_general, "Allgemein")
 
@@ -917,6 +930,14 @@ class BlitztextApp(QObject):
 
     @pyqtSlot(str)
     def _on_hotkey_error(self, err_msg: str) -> None:
+        if _is_hotkey_device_access_error(err_msg):
+            logger.warning("Hotkey worker unavailable, continuing with GUI/tray fallback: %s", err_msg)
+            self.show_tray_warning(
+                "Hotkey Hinweis",
+                f"{err_msg}\nStart/Stopp läuft über Fenster/Tray.",
+            )
+            return
+
         logger.error("Hotkey worker error: %s", err_msg)
         self.show_tray_error("Hotkey Fehler", err_msg)
 

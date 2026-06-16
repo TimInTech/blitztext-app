@@ -316,8 +316,7 @@ BlitztextLinux/
 │   ├── transcribe.py       # Whisper-Transkription
 │   └── workflows.py        # Workflows Definition
 ├── tests/                  # Test-Suite
-├── README.md               # Dieses Dokument
-└── linux_port_report.md    # Status-Bericht und Test-Zusammenfassung
+└── README.md               # Dieses Dokument
 ```
 </details>
 
