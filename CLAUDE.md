@@ -1,88 +1,48 @@
-# BlitztextLinux Handover
+# BlitztextLinux – Claude Context
 
-Aktuelle Uebergabe fuer den naechsten Chat:
+Diese Datei gibt Claude Kontext über das Projekt.
 
-- [HANDOVER-2026-06-06-session2.md](HANDOVER-2026-06-06-session2.md) (aktuell)
-- [HANDOVER-2026-06-06.md](HANDOVER-2026-06-06.md) (vorherige Session: evdev-Hotkey)
+## Projektübersicht
 
-Kurzkontext:
+BlitztextLinux ist ein Linux-nativer Sprach-Diktierdienst (Python, PyQt5/PySide6, Whisper).
+Er läuft als System-Tray-App mit globalem Hotkey, transkribiert Sprache lokal und tippt den
+Text direkt in das fokussierte Fenster.
 
-- Projektpfad: `/home/timintech/projects/blitztext-app/BlitztextLinux` (Unterordner; Repo-Root `blitztext-app`, daneben `BlitztextMac`)
-- Branch: `feature/linux-port`; Remotes: `origin`=`TimInTech/blitztext-app` (pushen), `upstream`=`cmagnussen/blitztext-app`
-- Fokus der letzten Arbeit: Hotkey-Hang-Bugfix (Paste-Subprocess-Timeouts + `wl-copy` DEVNULL), neue Features (Diktat/Verlauf/Vorlesen/Notifications), grafisches Hauptfenster (Start/Stopp-Fallback), GitHub-Actions-CI.
-- Letzte Verifikation: `.venv/bin/python -m pytest tests/` → `110 passed, 9 skipped`; mit `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen` → `119 passed`. CI auf TimInTech grün (Python 3.11 + 3.12).
-- PR #1 (upstream) ist ein automatischer GitHub-Vorschlag (fremder Windows-Tauri-Port) – nicht anfassen. Eigener Linux-PR folgt später.
+## Architektur
 
-## Changelog v0.2.23
+- `app/` – Python-Paket (Tray, Hotkey, State-Machine, Paste, History, TTS, Notify, Settings)
+- `scripts/` – Hilfsskripte (Setup, Packaging)
+- `systemd/` – User-Service-Unit
+- `tests/` – pytest-Suite (GUI-gated via `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen`)
+- `docs/` – Screenshots und Dokumentation
 
-- feat: Design-System-Integration (Breeze-Dark/Glass) aus dem „Blitztext Design
-  System" portiert. Neues `app/theme.py` mit globalem QSS (weiche Rundungen,
-  Hairlines, Breeze-Blau-Fokus) und Marken-App-Icon (Mikrofon + Blitz, bevorzugt
-  `app/assets/logo-mark-dark.svg`, gezeichneter Fallback).
-- feat: `app/main_window.py` als Glass-Redesign — runder Amber-Record-„Shutter"
-  (`RecordButton`, QPainter) mit Mic-/Stop-/Spinner-Glyph und pulsierendem Ring
-  bei Aufnahme, Status-Punkt + Mono-Timer, Pill-Buttons (Verwerfen/Diktat),
-  runde Icon-Buttons (Vorlesen/Einstellungen), Verlauf mit Zähler. Funktion und
-  Test-Attribute (`_btn_toggle`/`_btn_dictation`/`_workflow_combo`) erhalten.
-- assets: `app/assets/logo-mark.svg` + `logo-mark-dark.svg` ins Repo übernommen;
-  App-/Fenster-Icon gesetzt. Tray-Status-Icons unverändert.
-- docs: Neue Screenshots `docs/screenshots/linux/main-window.png` (Bereit) und
-  `main-window-recording.png` (Aufnahme) im Glass-Design; README-Galerie ergänzt.
-- Verifikation: `119 passed` (offscreen GUI-Tests).
+## Wichtige Konventionen
 
-## Changelog v0.2.22
+### Nicht anfassen
+- Hotkey-Erkennung: `KEY_LEFTALT`, `value=1` only, `value=2`/`value=0` ignoriert (`app/hotkey_service.py`)
+- evdev-Debounce-Timing: `0.6s` (`DEBOUNCE_SECONDS`)
+- State-Guard: Toggles während `TRANSCRIBING`/`LLM_REWRITING` werden bewusst blockiert
+- Tray-Farb-Konvention: IDLE=grün, RECORDING=rot, TRANSCRIBING/LLM=orange, ERROR=grau
 
-- feat: Grafisches Hauptfenster (`app/main_window.py`) als Fallback zum globalen
-  Hotkey — Start/Stopp per Maus, Workflow-Auswahl (alle 5), Verwerfen, plus
-  Diktat/Verlauf/Vorlesen/Einstellungen. Start/Stopp funktioniert unabhängig vom
-  Hotkey-Modus (`BlitztextApp.gui_toggle_recording`/`gui_discard`).
-- feat: Tray-Eintrag „🪟 Fenster anzeigen" und Einfach-/Doppelklick auf das
-  Tray-Icon öffnen das Fenster. Fenster wird beim Start angezeigt; Schließen
-  versteckt es nur (App läuft im Tray weiter).
-- Diktat-Modus ist zwischen Tray-Action und Fenster-Button synchronisiert
-  (`set_dictation_mode`); Verlaufs-Zähler im Fenster-Badge.
-- tests: GUI-gated `TestMainWindowControl` in `tests/test_state_machine.py`.
+### Tests ausführen
+```bash
+.venv/bin/python -m pytest tests/
+# Mit GUI-Tests:
+WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen .venv/bin/python -m pytest tests/
+```
 
-## Changelog v0.2.21
+### Branch-Strategie
+- `main` – stabiler Stand, direkt nutzbar
+- Feature-Branches für größere Änderungen
 
-Portierte Features aus whisper-dictation (an die Tray-only-Architektur angepasst):
+## Letzte bekannte Teststände
 
-- feat: Diktat-Modus (Tray-Toggle) — sammelt Transkripte als Diktat-Einträge und
-  speichert sie einzeln als `.md` in einen Notizordner (`app/history_panel.py`,
-  `save_dictation_note`, nur innerhalb von `~`, `0o600`).
-- feat: Verlauf-Fenster — letzte Transkripte mit Kopieren/Löschen je Eintrag und
-  „Zusammenführen" (kombiniert Diktat-Einträge in eine `.md`-Datei + Clipboard).
-- feat: Vorlesen (TTS) via Piper (`app/tts_window.py`) — optionale Abhängigkeit,
-  Stimmen-/Tempo-Wahl, Pause/Fortsetzen; deaktiviert sich sauber ohne Piper.
-- feat: Desktop-Notifications via `notify-send` (`app/notify.py`).
-- config: neue Felder `notes_folder`, `history_size`, `tts_voice`, `tts_speed`
-  inkl. Validierung; Settings-Dialog (Tab „Allgemein") für Notizordner +
-  Verlaufsgröße.
-- tests: `tests/test_features.py` (19 GUI-freie Tests). Suite: 110 passed, 4 skipped.
+- `110 passed, 9 skipped` (ohne GUI-Tests)
+- `119 passed` (mit `WHISPER_GUI_TESTS=1 QT_QPA_PLATFORM=offscreen`)
+- CI auf `TimInTech/blitztext-app` grün (Python 3.11 + 3.12)
 
-## Changelog v0.2.20
+## Offene Punkte
 
-- fix: Left-Alt Hotkey haengt nach erstem Zyklus — Root Cause war ein
-  blockierender Paste-Subprocess ohne Timeout (`paste_service.py`). Ein haengendes
-  `ydotool`/`wl-copy` liess den Transkriptions-Worker nie zurueckkehren, sodass der
-  App-State dauerhaft auf `TRANSCRIBING`/`LLM_REWRITING` (orange) stand und kein
-  neuer Hotkey-Toggle moeglich war. `wl-copy` und `ydotool` haben jetzt
-  `timeout=5s`; ein ydotool-Timeout ist nicht-fatal (Clipboard ist bereits
-  gesetzt), ein wl-copy-Timeout wird als `PasteServiceError` -> Worker-`error` ->
-  State `IDLE` behandelt. Damit kehrt der State nach jedem Zyklus zuverlaessig auf
-  IDLE zurueck.
-- bestaetigt/abgesichert: `KEY_LEFTALT` Einzel-Key-Erkennung, `value=1` (key-down)
-  loest aus, `value=2` (auto-repeat) und `value=0` (key-up) werden ignoriert;
-  Debounce 0.6s. Neue Regressionstests in `tests/test_state_machine.py`.
-
-## Nicht anfassen
-
-- Hotkey-Erkennung: Left-Alt (`KEY_LEFTALT`) Einzel-Key-Erkennung, `value=1` only,
-  `value=2`/`value=0` ignoriert (`app/hotkey_service.py`).
-- evdev-Debounce-Timing: 0.6s (`DEBOUNCE_SECONDS`).
-- State-Guard: neue Toggles werden waehrend `TRANSCRIBING`/`LLM_REWRITING`
-  bewusst blockiert (Concurrency-Schutz) — der Fix sorgt nur dafuer, dass der
-  State nicht haengenbleibt, der Guard bleibt erhalten.
-- Tray-Farb-Konvention: IDLE=gruen, RECORDING=rot, TRANSCRIBING/LLM=orange,
-  ERROR=grau.
-
+- PR #1 (upstream `cmagnussen/blitztext-app`) ist ein automatischer GitHub-Vorschlag
+  (fremder Windows-Tauri-Port) – nicht mergen
+- Eigener Linux-PR zum upstream folgt später
