@@ -12,6 +12,9 @@
   <p><i>Sprache per Hotkey aufnehmen, lokal oder online transkribieren, optional per LLM umschreiben und direkt in die aktive Anwendung einfügen.</i></p>
 </div>
 
+> [!WARNING]
+> **Der Linux-Port ist umgezogen.** Er wird ab sofort eigenständig unter **[TimInTech/blitztext-linux](https://github.com/TimInTech/blitztext-linux)** gepflegt. Bitte nutze für Installation, Updates und Issues das neue Repository. Dieser Fork wird nicht mehr aktiv weiterentwickelt.
+
 > [!IMPORTANT]
 > **Eigenständiger Linux-Port:** Dieses Repository enthält ausschließlich den Linux-Port von Blitztext – eine eigenständige Python 3/PyQt6-Implementierung optimiert für **Kubuntu/Ubuntu unter KDE Plasma mit Wayland**. Für die originale macOS-Version besuche bitte das [offizielle Haupt-Repository](https://github.com/cmagnussen/blitztext-app).
 
